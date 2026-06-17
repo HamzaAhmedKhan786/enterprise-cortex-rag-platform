@@ -1,0 +1,13 @@
+Frequently Asked Questions
+
+Q: How can I reset my password?
+A: Click the Forgot Password link on the login page.
+
+Q: How can I track my order?
+A: Use the tracking number sent by email after dispatch.
+
+Q: Can I cancel an order?
+A: Orders can be cancelled before they are shipped.
+
+Q: How do I contact support?
+A: Customers can contact support through the help center or support ticket form.
