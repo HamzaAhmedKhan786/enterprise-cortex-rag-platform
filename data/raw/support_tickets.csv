@@ -1,0 +1,101 @@
+ticket_id,customer_id,issue_type,description,status,created_at
+1,32,Payment Issue,Customer was charged but did not receive order confirmation.,Resolved,2025-08-19 21:17:48
+2,26,Payment Issue,Customer was charged but did not receive order confirmation.,Open,2026-04-24 10:09:28
+3,6,Technical Issue,Customer reports that the device is not working correctly after setup.,Resolved,2026-04-28 15:36:38
+4,21,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Open,2025-08-25 12:55:05
+5,26,Wrong Item Delivered,Customer received a different item than the one ordered.,Open,2026-05-26 02:03:54
+6,35,Payment Issue,Customer was charged but did not receive order confirmation.,Closed,2025-11-24 21:31:58
+7,4,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-06-27 09:41:46
+8,24,Warranty Claim,Customer asks whether the product is covered under warranty.,Closed,2025-08-26 10:25:59
+9,29,Payment Issue,Customer was charged but did not receive order confirmation.,Open,2026-03-30 19:56:56
+10,18,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,In Progress,2026-06-11 19:31:00
+11,29,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Closed,2025-10-24 18:51:48
+12,2,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,In Progress,2026-04-17 15:02:28
+13,11,Payment Issue,Customer was charged but did not receive order confirmation.,Resolved,2026-06-14 06:30:12
+14,1,Warranty Claim,Customer asks whether the product is covered under warranty.,Closed,2025-11-24 16:06:55
+15,15,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Open,2026-04-25 08:02:38
+16,8,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2026-03-04 22:39:27
+17,46,Technical Issue,Customer reports that the device is not working correctly after setup.,Resolved,2026-05-19 08:19:51
+18,46,Warranty Claim,Customer asks whether the product is covered under warranty.,Resolved,2026-03-30 05:54:12
+19,31,Technical Issue,Customer reports that the device is not working correctly after setup.,Closed,2026-04-28 15:24:06
+20,30,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,In Progress,2025-09-22 03:45:24
+21,13,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-09-29 09:28:48
+22,5,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2025-08-18 14:30:07
+23,27,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2026-04-19 13:31:58
+24,33,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2026-03-17 03:03:25
+25,1,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2025-07-29 18:11:41
+26,20,Payment Issue,Customer was charged but did not receive order confirmation.,Closed,2025-11-13 08:13:04
+27,10,Wrong Item Delivered,Customer received a different item than the one ordered.,Closed,2026-05-22 11:51:15
+28,31,Warranty Claim,Customer asks whether the product is covered under warranty.,Resolved,2025-07-02 19:36:36
+29,36,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Closed,2026-05-17 05:20:22
+30,21,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-12-17 13:49:10
+31,16,Payment Issue,Customer was charged but did not receive order confirmation.,Closed,2025-09-12 03:54:11
+32,50,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Closed,2025-09-03 06:49:26
+33,21,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Closed,2026-04-30 21:48:33
+34,25,Payment Issue,Customer was charged but did not receive order confirmation.,Closed,2026-06-09 11:15:45
+35,42,Payment Issue,Customer was charged but did not receive order confirmation.,In Progress,2025-12-13 13:00:27
+36,3,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-10-31 13:43:23
+37,38,Warranty Claim,Customer asks whether the product is covered under warranty.,Resolved,2025-10-14 07:15:20
+38,7,Wrong Item Delivered,Customer received a different item than the one ordered.,Closed,2026-05-02 10:37:26
+39,34,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Closed,2026-04-22 15:49:40
+40,47,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,In Progress,2026-05-22 03:59:23
+41,42,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-09-14 04:00:51
+42,31,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Resolved,2025-09-12 08:28:07
+43,40,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Closed,2025-06-26 23:14:20
+44,6,Payment Issue,Customer was charged but did not receive order confirmation.,Resolved,2026-03-01 02:37:32
+45,44,Wrong Item Delivered,Customer received a different item than the one ordered.,Closed,2025-08-31 18:46:14
+46,41,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Closed,2025-11-19 12:38:33
+47,35,Wrong Item Delivered,Customer received a different item than the one ordered.,Open,2025-10-23 06:17:37
+48,5,Warranty Claim,Customer asks whether the product is covered under warranty.,In Progress,2025-10-03 23:26:21
+49,44,Payment Issue,Customer was charged but did not receive order confirmation.,Resolved,2026-05-19 11:01:26
+50,48,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Open,2025-07-14 17:43:07
+51,7,Technical Issue,Customer reports that the device is not working correctly after setup.,Open,2026-04-14 02:35:50
+52,11,Technical Issue,Customer reports that the device is not working correctly after setup.,Resolved,2025-10-04 04:18:14
+53,3,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Resolved,2025-11-01 03:35:22
+54,4,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2026-02-21 21:42:49
+55,24,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Closed,2026-01-01 14:40:32
+56,16,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Closed,2025-11-19 23:56:35
+57,44,Warranty Claim,Customer asks whether the product is covered under warranty.,In Progress,2026-03-08 16:14:18
+58,12,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Open,2026-05-11 10:09:45
+59,25,Warranty Claim,Customer asks whether the product is covered under warranty.,In Progress,2026-01-12 00:33:48
+60,38,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-10-24 09:12:39
+61,30,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Resolved,2026-06-17 12:59:42
+62,17,Technical Issue,Customer reports that the device is not working correctly after setup.,Open,2025-06-28 11:55:34
+63,30,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2025-08-01 13:44:00
+64,35,Payment Issue,Customer was charged but did not receive order confirmation.,In Progress,2026-05-24 09:15:39
+65,29,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Resolved,2025-09-27 05:22:21
+66,20,Warranty Claim,Customer asks whether the product is covered under warranty.,Closed,2025-08-26 03:02:35
+67,17,Payment Issue,Customer was charged but did not receive order confirmation.,Closed,2026-01-29 06:09:32
+68,20,Wrong Item Delivered,Customer received a different item than the one ordered.,In Progress,2025-09-28 20:59:47
+69,31,Technical Issue,Customer reports that the device is not working correctly after setup.,Open,2025-07-02 15:15:12
+70,25,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Resolved,2025-07-29 21:03:19
+71,19,Warranty Claim,Customer asks whether the product is covered under warranty.,Resolved,2026-02-04 11:07:03
+72,43,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Closed,2025-12-03 13:05:54
+73,1,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Open,2025-10-30 00:42:28
+74,48,Warranty Claim,Customer asks whether the product is covered under warranty.,Closed,2026-03-27 17:12:09
+75,19,Wrong Item Delivered,Customer received a different item than the one ordered.,In Progress,2026-04-19 04:42:44
+76,23,Warranty Claim,Customer asks whether the product is covered under warranty.,In Progress,2025-10-17 14:21:18
+77,13,Payment Issue,Customer was charged but did not receive order confirmation.,Resolved,2025-12-04 06:09:22
+78,49,Payment Issue,Customer was charged but did not receive order confirmation.,In Progress,2026-02-08 04:56:47
+79,7,Payment Issue,Customer was charged but did not receive order confirmation.,Open,2026-01-02 09:28:44
+80,29,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Open,2025-08-01 16:34:02
+81,24,Warranty Claim,Customer asks whether the product is covered under warranty.,In Progress,2025-11-14 08:57:07
+82,19,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Resolved,2026-06-02 02:39:44
+83,27,Payment Issue,Customer was charged but did not receive order confirmation.,In Progress,2026-01-27 16:51:38
+84,9,Refund Request,Customer wants to return the product and requests a refund according to the refund policy.,Resolved,2025-08-30 14:19:59
+85,33,Warranty Claim,Customer asks whether the product is covered under warranty.,Resolved,2025-09-24 16:51:23
+86,11,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2025-07-05 00:22:58
+87,31,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2026-03-20 01:01:41
+88,22,Payment Issue,Customer was charged but did not receive order confirmation.,Open,2025-12-04 03:01:16
+89,5,Technical Issue,Customer reports that the device is not working correctly after setup.,In Progress,2025-06-18 10:26:03
+90,15,Wrong Item Delivered,Customer received a different item than the one ordered.,Closed,2026-01-05 16:40:45
+91,36,Wrong Item Delivered,Customer received a different item than the one ordered.,Resolved,2026-06-12 05:39:22
+92,26,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,Open,2026-04-26 23:53:48
+93,35,Damaged Product,Customer received a damaged item and uploaded photos as evidence.,Open,2026-01-12 21:24:24
+94,24,Technical Issue,Customer reports that the device is not working correctly after setup.,Resolved,2026-03-11 12:38:35
+95,25,Warranty Claim,Customer asks whether the product is covered under warranty.,Resolved,2026-03-24 04:14:38
+96,44,Delivery Delay,Customer reports that the order has not arrived within the expected delivery window.,In Progress,2026-06-17 22:33:28
+97,2,Technical Issue,Customer reports that the device is not working correctly after setup.,Resolved,2026-04-01 22:08:47
+98,15,Warranty Claim,Customer asks whether the product is covered under warranty.,Open,2026-03-31 00:21:35
+99,30,Payment Issue,Customer was charged but did not receive order confirmation.,Resolved,2026-03-05 05:22:52
+100,27,Payment Issue,Customer was charged but did not receive order confirmation.,Open,2025-09-02 07:10:15
