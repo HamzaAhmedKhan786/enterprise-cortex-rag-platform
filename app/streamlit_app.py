@@ -6,6 +6,8 @@ import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
 
+from pinecone import Pinecone
+from sentence_transformers import SentenceTransformer
 
 # Load environment variables
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -29,6 +31,30 @@ def run_query(query: str) -> pd.DataFrame:
     conn.close()
     return df
 
+@st.cache_resource
+def load_embedding_model():
+    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+
+
+@st.cache_resource
+def get_pinecone_index():
+    pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
+    return pc.Index(os.getenv("PINECONE_INDEX_NAME"))
+
+
+def search_knowledge_base(query: str, top_k: int = 3):
+    model = load_embedding_model()
+    index = get_pinecone_index()
+
+    query_embedding = model.encode(query).tolist()
+
+    results = index.query(
+        vector=query_embedding,
+        top_k=top_k,
+        include_metadata=True
+    )
+
+    return results["matches"]
 
 st.set_page_config(
     page_title="Enterprise Cortex RAG Platform",
@@ -132,3 +158,20 @@ recent_tickets = run_query("""
 """)
 
 st.dataframe(recent_tickets, use_container_width=True)
+
+st.divider()
+
+st.subheader("Knowledge Base Search")
+
+user_question = st.text_input("Ask a question about company policies or FAQ")
+
+if user_question:
+    matches = search_knowledge_base(user_question)
+
+    for match in matches:
+        score = round(match["score"], 4)
+        document_name = match["metadata"]["document_name"]
+        text = match["metadata"]["text"]
+
+        with st.expander(f"{document_name} | Score: {score}"):
+            st.write(text)
