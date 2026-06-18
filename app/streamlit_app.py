@@ -1,17 +1,19 @@
 import os
 from pathlib import Path
-
+from rag.rag_answer_ollama import ask_rag
 import pandas as pd
 import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
-
+from ollama import chat
 from pinecone import Pinecone
 from sentence_transformers import SentenceTransformer
 
-# Load environment variables
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+
+EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+OLLAMA_MODEL = "llama3.2:3b"
 
 
 def get_connection():
@@ -31,9 +33,10 @@ def run_query(query: str) -> pd.DataFrame:
     conn.close()
     return df
 
+
 @st.cache_resource
 def load_embedding_model():
-    return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    return SentenceTransformer(EMBEDDING_MODEL)
 
 
 @st.cache_resource
@@ -51,127 +54,234 @@ def search_knowledge_base(query: str, top_k: int = 3):
     results = index.query(
         vector=query_embedding,
         top_k=top_k,
-        include_metadata=True
+        include_metadata=True,
     )
 
     return results["matches"]
 
+
+def ask_documents(question: str):
+    matches = search_knowledge_base(question)
+
+    context_parts = []
+    sources = []
+
+    for match in matches:
+        metadata = match["metadata"]
+        text = metadata.get("text", "")
+        source = metadata.get("document_name") or metadata.get("source", "unknown")
+        score = round(match["score"], 4)
+
+        context_parts.append(
+            f"Source: {source}\nScore: {score}\nContent: {text}"
+        )
+        sources.append(source)
+
+    context = "\n\n".join(context_parts)
+
+    prompt = f"""
+You are an enterprise support assistant.
+
+Rules:
+- Answer ONLY from the provided context.
+- Keep the answer concise.
+- Do not invent information.
+- If the answer is not in the context, say:
+  "I do not know based on the provided documents."
+
+Context:
+{context}
+
+Question:
+{question}
+
+Answer:
+"""
+
+    response = chat(
+        model=OLLAMA_MODEL,
+        messages=[
+            {"role": "user", "content": prompt}
+        ],
+        options={
+            "temperature": 0.1,
+            "num_predict": 150,
+            "num_ctx": 2048,
+        },
+    )
+
+    answer = response["message"]["content"]
+    return answer, list(dict.fromkeys(sources)), matches
+
+
 st.set_page_config(
     page_title="Enterprise Cortex RAG Platform",
-    page_icon="📊",
+    page_icon="🧠",
     layout="wide",
 )
 
+st.sidebar.title("🧠 Enterprise Cortex")
+page = st.sidebar.radio(
+    "Navigation",
+    [
+        "📊 Analytics Dashboard",
+        "💬 Ask Documents",
+        "🔎 Knowledge Base Search",
+    ],
+)
+
 st.title("Enterprise Cortex RAG Platform")
-st.caption("PostgreSQL analytics dashboard for synthetic e-commerce support data")
+st.caption("PostgreSQL analytics + Pinecone RAG + Ollama")
 
 
-# KPI Queries
-customers_count = run_query("SELECT COUNT(*) AS total FROM customers;")["total"][0]
-products_count = run_query("SELECT COUNT(*) AS total FROM products;")["total"][0]
-orders_count = run_query("SELECT COUNT(*) AS total FROM orders;")["total"][0]
-tickets_count = run_query("SELECT COUNT(*) AS total FROM support_tickets;")["total"][0]
-revenue = run_query("SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders;")["total"][0]
+if page == "📊 Analytics Dashboard":
+    customers_count = run_query("SELECT COUNT(*) AS total FROM customers;")["total"][0]
+    products_count = run_query("SELECT COUNT(*) AS total FROM products;")["total"][0]
+    orders_count = run_query("SELECT COUNT(*) AS total FROM orders;")["total"][0]
+    tickets_count = run_query("SELECT COUNT(*) AS total FROM support_tickets;")["total"][0]
+    revenue = run_query("SELECT COALESCE(SUM(total_amount), 0) AS total FROM orders;")["total"][0]
 
-col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5 = st.columns(5)
 
-col1.metric("Customers", f"{customers_count:,}")
-col2.metric("Products", f"{products_count:,}")
-col3.metric("Orders", f"{orders_count:,}")
-col4.metric("Tickets", f"{tickets_count:,}")
-col5.metric("Revenue", f"€{revenue:,.2f}")
+    col1.metric("Customers", f"{customers_count:,}")
+    col2.metric("Products", f"{products_count:,}")
+    col3.metric("Orders", f"{orders_count:,}")
+    col4.metric("Tickets", f"{tickets_count:,}")
+    col5.metric("Revenue", f"€{revenue:,.2f}")
 
+    st.divider()
 
-st.divider()
+    left, right = st.columns(2)
 
+    with left:
+        st.subheader("Support Tickets by Issue Type")
+        tickets_by_issue = run_query("""
+            SELECT issue_type, COUNT(*) AS ticket_count
+            FROM support_tickets
+            GROUP BY issue_type
+            ORDER BY ticket_count DESC;
+        """)
+        st.bar_chart(tickets_by_issue.set_index("issue_type"))
 
-# Charts
-left, right = st.columns(2)
+    with right:
+        st.subheader("Orders by Customer City")
+        orders_by_city = run_query("""
+            SELECT c.city, COUNT(o.order_id) AS order_count
+            FROM orders o
+            JOIN customers c ON o.customer_id = c.customer_id
+            GROUP BY c.city
+            ORDER BY order_count DESC;
+        """)
+        st.bar_chart(orders_by_city.set_index("city"))
 
-with left:
-    st.subheader("Support Tickets by Issue Type")
-    tickets_by_issue = run_query("""
-        SELECT issue_type, COUNT(*) AS ticket_count
-        FROM support_tickets
-        GROUP BY issue_type
-        ORDER BY ticket_count DESC;
-    """)
-    st.bar_chart(tickets_by_issue.set_index("issue_type"))
+    st.divider()
 
-with right:
-    st.subheader("Orders by Customer City")
-    orders_by_city = run_query("""
-        SELECT c.city, COUNT(o.order_id) AS order_count
-        FROM orders o
-        JOIN customers c ON o.customer_id = c.customer_id
-        GROUP BY c.city
-        ORDER BY order_count DESC;
-    """)
-    st.bar_chart(orders_by_city.set_index("city"))
+    left, right = st.columns(2)
 
+    with left:
+        st.subheader("Top Products by Revenue")
+        top_products = run_query("""
+            SELECT 
+                p.product_name,
+                ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue
+            FROM order_items oi
+            JOIN products p ON oi.product_id = p.product_id
+            GROUP BY p.product_name
+            ORDER BY revenue DESC
+            LIMIT 10;
+        """)
+        st.dataframe(top_products, use_container_width=True)
 
-st.divider()
+    with right:
+        st.subheader("Ticket Status Summary")
+        ticket_status = run_query("""
+            SELECT status, COUNT(*) AS count
+            FROM support_tickets
+            GROUP BY status
+            ORDER BY count DESC;
+        """)
+        st.dataframe(ticket_status, use_container_width=True)
 
+    st.divider()
 
-left, right = st.columns(2)
-
-with left:
-    st.subheader("Top Products by Revenue")
-    top_products = run_query("""
+    st.subheader("Recent Support Tickets")
+    recent_tickets = run_query("""
         SELECT 
-            p.product_name,
-            ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue
-        FROM order_items oi
-        JOIN products p ON oi.product_id = p.product_id
-        GROUP BY p.product_name
-        ORDER BY revenue DESC
-        LIMIT 10;
+            st.ticket_id,
+            c.first_name || ' ' || c.last_name AS customer_name,
+            st.issue_type,
+            st.status,
+            st.created_at
+        FROM support_tickets st
+        JOIN customers c ON st.customer_id = c.customer_id
+        ORDER BY st.created_at DESC
+        LIMIT 20;
     """)
-    st.dataframe(top_products, use_container_width=True)
 
-with right:
-    st.subheader("Ticket Status Summary")
-    ticket_status = run_query("""
-        SELECT status, COUNT(*) AS count
-        FROM support_tickets
-        GROUP BY status
-        ORDER BY count DESC;
-    """)
-    st.dataframe(ticket_status, use_container_width=True)
+    st.dataframe(recent_tickets, use_container_width=True)
 
 
-st.divider()
+elif page == "💬 Ask Documents":
+    st.subheader("💬 Ask Documents")
+    st.write("Ask questions from refund policy, shipping policy, and FAQ documents.")
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    for item in st.session_state.chat_history:
+        with st.chat_message("user"):
+            st.write(item["question"])
+
+        with st.chat_message("assistant"):
+            st.write(item["answer"])
+            st.caption("Sources: " + ", ".join(item["sources"]))
+
+    question = st.chat_input("Ask a question, e.g. How long does a refund take?")
+
+    if question:
+        with st.chat_message("user"):
+            st.write(question)
+
+        with st.spinner("Retrieving documents and generating answer..."):
+            answer, sources, matches = ask_documents(question)
+
+        with st.chat_message("assistant"):
+            st.write(answer)
+            st.caption("Sources: " + ", ".join(sources))
+
+        st.session_state.chat_history.append(
+            {
+                "question": question,
+                "answer": answer,
+                "sources": sources,
+            }
+        )
+
+        with st.expander("Retrieved chunks"):
+            for match in matches:
+                metadata = match["metadata"]
+                source = metadata.get("document_name") or metadata.get("source", "unknown")
+                score = round(match["score"], 4)
+                text = metadata.get("text", "")
+
+                st.markdown(f"**{source} | Score: {score}**")
+                st.write(text)
+                st.divider()
 
 
-st.subheader("Recent Support Tickets")
-recent_tickets = run_query("""
-    SELECT 
-        st.ticket_id,
-        c.first_name || ' ' || c.last_name AS customer_name,
-        st.issue_type,
-        st.status,
-        st.created_at
-    FROM support_tickets st
-    JOIN customers c ON st.customer_id = c.customer_id
-    ORDER BY st.created_at DESC
-    LIMIT 20;
-""")
+elif page == "🔎 Knowledge Base Search":
+    st.subheader("🔎 Knowledge Base Search")
 
-st.dataframe(recent_tickets, use_container_width=True)
+    user_question = st.text_input("Search company policies or FAQ")
 
-st.divider()
+    if user_question:
+        matches = search_knowledge_base(user_question)
 
-st.subheader("Knowledge Base Search")
+        for match in matches:
+            score = round(match["score"], 4)
+            metadata = match["metadata"]
+            document_name = metadata.get("document_name") or metadata.get("source", "unknown")
+            text = metadata.get("text", "")
 
-user_question = st.text_input("Ask a question about company policies or FAQ")
-
-if user_question:
-    matches = search_knowledge_base(user_question)
-
-    for match in matches:
-        score = round(match["score"], 4)
-        document_name = match["metadata"]["document_name"]
-        text = match["metadata"]["text"]
-
-        with st.expander(f"{document_name} | Score: {score}"):
-            st.write(text)
+            with st.expander(f"{document_name} | Score: {score}"):
+                st.write(text)
