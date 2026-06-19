@@ -7,19 +7,31 @@
 **pycache**/
 *.py[cod]
 *$py.class
+*.so
+
+# =========================
 
 # Virtual Environments
 
+# =========================
+
 .venv/
+.venv312/
+.venv_ragas/
 venv/
 env/
 ENV/
 
-# Python packaging
+# =========================
+
+# Python Packaging
+
+# =========================
 
 build/
 dist/
 *.egg-info/
+pip-wheel-metadata/
 
 # =========================
 
@@ -29,6 +41,7 @@ dist/
 
 .env
 .env.*
+!.env.example
 
 # =========================
 
@@ -54,6 +67,7 @@ dist/
 # =========================
 
 *.log
+logs/
 
 # =========================
 
@@ -66,7 +80,7 @@ Thumbs.db
 
 # =========================
 
-# PostgreSQL Dumps
+# PostgreSQL
 
 # =========================
 
@@ -124,6 +138,40 @@ logs/
 # =========================
 
 data/generated/
+data/raw/
+data/temp/
+
+# =========================
+
+# Vector Databases
+
+# =========================
+
+qdrant_storage/
+chroma_db/
+faiss_index/
+
+# =========================
+
+# Models
+
+# =========================
+
+models/
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.onnx
+
+# =========================
+
+# Evaluation
+
+# =========================
+
+evaluation/results/
+evaluation/reports/
 
 # =========================
 
@@ -133,3 +181,30 @@ data/generated/
 
 *.tmp
 *.temp
+
+# =========================
+
+# Coverage
+
+# =========================
+
+.coverage
+htmlcov/
+.pytest_cache/
+
+# =========================
+
+# Airflow
+
+# =========================
+
+airflow/logs/
+airflow/plugins/**pycache**/
+
+# =========================
+
+# Kubernetes
+
+# =========================
+
+*.kubeconfig

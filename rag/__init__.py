@@ -1,1 +1,1 @@
-# Makes rag a Python package
+# RAG package for Enterprise Cortex RAG Platform

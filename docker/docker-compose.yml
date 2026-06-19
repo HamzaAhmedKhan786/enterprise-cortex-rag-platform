@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: enterprise-cortex-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: enterprise_cortex_rag
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../database/postgres_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+
+  streamlit:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.streamlit
+    container_name: enterprise-cortex-streamlit
+    restart: always
+    ports:
+      - "8501:8501"
+    env_file:
+      - ../.env
+    depends_on:
+      - postgres
+
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: enterprise-cortex-n8n
+    restart: always
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+volumes:
+  postgres_data:
+  n8n_data:

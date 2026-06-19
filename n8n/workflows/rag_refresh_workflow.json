@@ -1,0 +1,36 @@
+{
+  "name": "Enterprise Cortex RAG Refresh",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "command": "python etl/process_documents.py && python rag/pinecone_rag.py"
+      },
+      "id": "refresh-rag",
+      "name": "Refresh RAG Index",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [520, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Refresh RAG Index",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

@@ -1,19 +1,25 @@
 import os
+import sys
 from pathlib import Path
-from rag.rag_answer_ollama import ask_rag
+
 import pandas as pd
 import psycopg2
 import streamlit as st
 from dotenv import load_dotenv
-from ollama import chat
-from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.append(str(BASE_DIR))
 load_dotenv(BASE_DIR / ".env")
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
-OLLAMA_MODEL = "llama3.2:3b"
+from rag.rag_pipeline import ask_rag
+from rag.retriever import retrieve_documents
+
+
+st.set_page_config(
+    page_title="Enterprise Cortex RAG Platform",
+    page_icon="🧠",
+    layout="wide",
+)
 
 
 def get_connection():
@@ -33,92 +39,6 @@ def run_query(query: str) -> pd.DataFrame:
     conn.close()
     return df
 
-
-@st.cache_resource
-def load_embedding_model():
-    return SentenceTransformer(EMBEDDING_MODEL)
-
-
-@st.cache_resource
-def get_pinecone_index():
-    pc = Pinecone(api_key=os.getenv("PINECONE_API_KEY"))
-    return pc.Index(os.getenv("PINECONE_INDEX_NAME"))
-
-
-def search_knowledge_base(query: str, top_k: int = 3):
-    model = load_embedding_model()
-    index = get_pinecone_index()
-
-    query_embedding = model.encode(query).tolist()
-
-    results = index.query(
-        vector=query_embedding,
-        top_k=top_k,
-        include_metadata=True,
-    )
-
-    return results["matches"]
-
-
-def ask_documents(question: str):
-    matches = search_knowledge_base(question)
-
-    context_parts = []
-    sources = []
-
-    for match in matches:
-        metadata = match["metadata"]
-        text = metadata.get("text", "")
-        source = metadata.get("document_name") or metadata.get("source", "unknown")
-        score = round(match["score"], 4)
-
-        context_parts.append(
-            f"Source: {source}\nScore: {score}\nContent: {text}"
-        )
-        sources.append(source)
-
-    context = "\n\n".join(context_parts)
-
-    prompt = f"""
-You are an enterprise support assistant.
-
-Rules:
-- Answer ONLY from the provided context.
-- Keep the answer concise.
-- Do not invent information.
-- If the answer is not in the context, say:
-  "I do not know based on the provided documents."
-
-Context:
-{context}
-
-Question:
-{question}
-
-Answer:
-"""
-
-    response = chat(
-        model=OLLAMA_MODEL,
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
-        options={
-            "temperature": 0.1,
-            "num_predict": 150,
-            "num_ctx": 2048,
-        },
-    )
-
-    answer = response["message"]["content"]
-    return answer, list(dict.fromkeys(sources)), matches
-
-
-st.set_page_config(
-    page_title="Enterprise Cortex RAG Platform",
-    page_icon="🧠",
-    layout="wide",
-)
 
 st.sidebar.title("🧠 Enterprise Cortex")
 page = st.sidebar.radio(
@@ -243,11 +163,19 @@ elif page == "💬 Ask Documents":
             st.write(question)
 
         with st.spinner("Retrieving documents and generating answer..."):
-            answer, sources, matches = ask_documents(question)
+            result = ask_rag(question)
+
+        answer = result["answer"]
+        sources = result["sources"]
+        documents = result["documents"]
 
         with st.chat_message("assistant"):
             st.write(answer)
-            st.caption("Sources: " + ", ".join(sources))
+
+            if sources:
+                st.caption("Sources: " + ", ".join(sources))
+            else:
+                st.caption("Sources: No source found")
 
         st.session_state.chat_history.append(
             {
@@ -258,30 +186,31 @@ elif page == "💬 Ask Documents":
         )
 
         with st.expander("Retrieved chunks"):
-            for match in matches:
-                metadata = match["metadata"]
-                source = metadata.get("document_name") or metadata.get("source", "unknown")
-                score = round(match["score"], 4)
-                text = metadata.get("text", "")
-
-                st.markdown(f"**{source} | Score: {score}**")
-                st.write(text)
-                st.divider()
+            if documents:
+                for doc in documents:
+                    st.markdown(f"**{doc['source']} | Score: {round(doc['score'], 4)}**")
+                    st.write(doc["text"])
+                    st.divider()
+            else:
+                st.write("No retrieved chunks found.")
 
 
 elif page == "🔎 Knowledge Base Search":
     st.subheader("🔎 Knowledge Base Search")
+    st.write("This shows raw retrieved chunks from Pinecone before answer generation.")
 
     user_question = st.text_input("Search company policies or FAQ")
 
     if user_question:
-        matches = search_knowledge_base(user_question)
+        documents = retrieve_documents(user_question)
 
-        for match in matches:
-            score = round(match["score"], 4)
-            metadata = match["metadata"]
-            document_name = metadata.get("document_name") or metadata.get("source", "unknown")
-            text = metadata.get("text", "")
+        if documents:
+            for doc in documents:
+                score = round(doc["score"], 4)
+                document_name = doc["source"]
+                text = doc["text"]
 
-            with st.expander(f"{document_name} | Score: {score}"):
-                st.write(text)
+                with st.expander(f"{document_name} | Score: {score}"):
+                    st.write(text)
+        else:
+            st.warning("No matching documents found.")

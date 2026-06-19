@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: enterprise-cortex-streamlit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: enterprise-cortex-streamlit
+  template:
+    metadata:
+      labels:
+        app: enterprise-cortex-streamlit
+    spec:
+      containers:
+        - name: streamlit
+          image: enterprise-cortex-rag-platform:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8501
+          envFrom:
+            - configMapRef:
+                name: enterprise-cortex-config
+            - secretRef:
+                name: enterprise-cortex-secret
