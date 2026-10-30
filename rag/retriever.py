@@ -1,16 +1,19 @@
 import os
 from functools import lru_cache
-from typing import Dict, List
+from typing import TYPE_CHECKING, Dict, List
 
 from pinecone import Pinecone
-from sentence_transformers import SentenceTransformer
+if TYPE_CHECKING:
+    from sentence_transformers import SentenceTransformer
 
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 @lru_cache(maxsize=1)
-def load_embedding_model() -> SentenceTransformer:
+def load_embedding_model() -> "SentenceTransformer":
+    from sentence_transformers import SentenceTransformer
+
     return SentenceTransformer(EMBEDDING_MODEL)
 
 

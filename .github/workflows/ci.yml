@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           pip install --upgrade pip setuptools wheel
-          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Run tests
         run: |
-          pytest --cov=rag --cov-report=xml
+          pytest tests -q --cov=cortex --cov-report=xml

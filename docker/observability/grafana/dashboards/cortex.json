@@ -1,0 +1,13 @@
+{
+  "uid": "cortex-operations",
+  "title": "Cortex · Workspace operations",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-6h", "to": "now"},
+  "panels": [
+    {"id": 1, "title": "Retained datasets", "type": "stat", "datasource": {"uid": "cortex-prometheus", "type": "prometheus"}, "gridPos": {"x": 0, "y": 0, "w": 8, "h": 5}, "targets": [{"refId": "A", "expr": "cortex_datasets"}]},
+    {"id": 2, "title": "Retained runs by status", "type": "timeseries", "datasource": {"uid": "cortex-prometheus", "type": "prometheus"}, "gridPos": {"x": 8, "y": 0, "w": 16, "h": 9}, "targets": [{"refId": "A", "expr": "cortex_runs", "legendFormat": "{{status}}"}]},
+    {"id": 3, "title": "Mean retained run duration (seconds)", "type": "stat", "datasource": {"uid": "cortex-prometheus", "type": "prometheus"}, "gridPos": {"x": 0, "y": 5, "w": 8, "h": 4}, "targets": [{"refId": "A", "expr": "sum(cortex_run_duration_seconds_sum) / clamp_min(sum(cortex_runs), 1)"}]}
+  ]
+}

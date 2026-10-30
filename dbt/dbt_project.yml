@@ -1,0 +1,12 @@
+name: enterprise_cortex_rag
+version: '1.0.0'
+config-version: 2
+profile: enterprise_cortex_rag
+model-paths: [models]
+models:
+  enterprise_cortex_rag:
+    +materialized: view
+    silver:
+      +schema: SILVER
+    gold:
+      +schema: GOLD

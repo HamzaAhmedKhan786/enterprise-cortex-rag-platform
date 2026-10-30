@@ -157,7 +157,7 @@ faiss_index/
 
 # =========================
 
-models/
+/models/
 *.pt
 *.pth
 *.bin
@@ -208,3 +208,13 @@ airflow/plugins/**pycache**/
 # =========================
 
 *.kubeconfig
+
+# Private workspace state and local test artifacts
+data/private/
+data/test-temp/
+data/ui-test-temp/
+__pycache__/
+*.sqlite3
+*.sqlite3-*
+coverage.xml
+docs/screenshots/.auth*
