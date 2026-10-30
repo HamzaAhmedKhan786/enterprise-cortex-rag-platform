@@ -101,7 +101,7 @@ if page == "📊 Analytics Dashboard":
     with left:
         st.subheader("Top Products by Revenue")
         top_products = run_query("""
-            SELECT 
+            SELECT
                 p.product_name,
                 ROUND(SUM(oi.quantity * oi.unit_price), 2) AS revenue
             FROM order_items oi
@@ -126,7 +126,7 @@ if page == "📊 Analytics Dashboard":
 
     st.subheader("Recent Support Tickets")
     recent_tickets = run_query("""
-        SELECT 
+        SELECT
             st.ticket_id,
             c.first_name || ' ' || c.last_name AS customer_name,
             st.issue_type,
