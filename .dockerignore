@@ -1,0 +1,15 @@
+.git
+.env
+.env.*
+.venv*
+**/__pycache__
+.pytest_cache
+data/private
+data/raw
+data/test-temp
+data/ui-test-temp
+docs/screenshots
+docs/review-2026-10-30
+ECRP*
+*.log
+*.sqlite3*

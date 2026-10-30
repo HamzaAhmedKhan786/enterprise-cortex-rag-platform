@@ -1,331 +1,123 @@
-# Enterprise Cortex RAG Platform
+# Cortex — Enterprise Intelligence Workspace
 
-## 🚀 Overview
+A local-first workspace for business analytics, document retrieval and auditable AI decision support. Upload data once, inspect its quality, choose a retrieval configuration, and explore traceable numbers and evidence.
 
-Enterprise Cortex RAG Platform is an end-to-end GenAI, Data Engineering, and Snowflake Cortex project designed to demonstrate enterprise-grade AI architecture patterns.
+**Release status:** enterprise-oriented single-node foundation. Authentication and account isolation are implemented; public multi-tenant SaaS hardening is still required. See [remaining work](docs/REMAINING_WORK.md).
 
-This project combines structured business data, unstructured documents, Retrieval-Augmented Generation (RAG), data warehousing, workflow automation, and cloud-native deployment into a single platform.
+## What changed
 
-The goal is to simulate how modern enterprises build AI-powered knowledge assistants, analytics platforms, and intelligent decision-support systems.
+| Before | Workspace release |
+|---|---|
+| Three unauthenticated pages over shared data | Signup/login and private per-account datasets/history |
+| Fixed PostgreSQL charts | Raw uploads, eight chart views, date/product/customer filters and reports |
+| Shared Pinecone RAG | Local scoped BM25, parent-child and optional local dense hybrid indexes |
+| Single question-answer function | Actual LangGraph policy/tool/response/verification workflow |
+| Aspirational enterprise feature list | Explicit implemented, optional and pending capabilities |
+| No visible data boundary | Local full-content inference; cloud numeric aggregates only |
 
----
+## Workspace capabilities
 
-## 🎯 Project Objectives
+- **Accounts:** salted PBKDF2 passwords, login throttling, expiring sessions and signout. Each account starts empty.
+- **Data studio:** CSV, flat JSON, XLSX, PDF and TXT; bounded parsing, source fingerprints, immutable raw versions, quality profiles, explainable recommendations and optional local AI advice from a bounded sample.
+- **Analytics:** revenue trend, product contribution, revenue mix, customer concentration, weekly heatmap, operational distribution, contribution economics and regional performance. All use the same selected date/product/customer filters.
+- **Reports:** grouped and underlying tables, CSV exports with spreadsheet formula escaping. Required schema: `date,product,customer_id,revenue`; single currency EUR.
+- **Decision brief:** deterministic SLA, contribution-margin and concentration rules with evidence and suggested investigations.
+- **Knowledge:** scoped indexes, source/chunk references, no-evidence abstention and retrieval smoke tests. Hybrid uses local dense embeddings + BM25/RRF, with lexical coverage reranking; neural reranking is not yet implemented.
+- **Copilot:** evidence-only default, optional LangChain/Ollama generation with recent private history, or Groq explanations of approved numeric aggregates only.
+- **Operations:** index lifecycle events, agent runs, duration/status, private chat history and feedback. Optional metadata-only Langfuse, deterministic DeepEval metric and Grafana/Prometheus configuration.
+- **Connections:** administrator-only read adapter for [RouteMind](https://github.com/HamzaAhmedKhan786/agentic-logistics-ai); contract-based market gateway. No connected service is represented as live unless configured and fetched.
 
-* Build a normalized PostgreSQL transactional database.
-* Implement enterprise data warehouse architecture.
-* Design Bronze, Silver, and Gold data layers.
-* Implement ETL/ELT pipelines using Python and dbt.
-* Build RAG pipelines using Pinecone.
-* Implement Snowflake Cortex Search.
-* Implement Snowflake Cortex Analyst.
-* Automate ingestion using n8n.
-* Build AI applications using Streamlit.
-* Containerize services using Docker.
-* Deploy workloads on Kubernetes (k3d).
+## Screenshots
 
----
+Fresh workspace screenshots are in [docs/screenshots](docs/screenshots). The capture guide identifies synthetic demonstration data and validation limits.
 
-## 🏗 Architecture
+![Cortex overview](docs/screenshots/02-overview.png)
 
-```text
-Data Sources
-│
-├── PostgreSQL
-├── CSV Files
-├── JSON Files
-├── PDF Documents
-├── Support Tickets
-│
-▼
-n8n Workflow Automation
-│
-▼
-Python ETL / Snowpark
-│
-▼
-Data Warehouse
-│
-├── Bronze Layer
-├── Silver Layer
-├── Gold Layer
-│
-▼
-AI Layer
-│
-├── Pinecone RAG
-├── Cortex Search
-├── Cortex Analyst
-│
-▼
-Streamlit Application
-│
-▼
-Docker & Kubernetes
+![Evidence-backed copilot](docs/screenshots/08-copilot.png)
+
+## Quick start
+
+Python 3.12:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements-app.txt
+Copy-Item .env.example .env
+streamlit run app/streamlit_app.py
 ```
 
----
+Open http://localhost:8501 and create an account. No default passwords or seeded user accounts exist. Select **Load demonstration workspace** to explore 540 explicitly synthetic records; these are separate from the original PostgreSQL sample data.
 
-## 💼 Business Use Case
-
-This platform simulates an enterprise customer support and knowledge management system.
-
-Users can ask questions such as:
-
-* What are customers complaining about most?
-* Which products generate the highest support volume?
-* What does the refund policy say?
-* Which customer segments generate the most revenue?
-* Summarize support tickets related to delivery delays.
-* Generate insights from structured business data.
-
----
-
-## 🧠 AI Capabilities
-
-### Retrieval-Augmented Generation (RAG)
-
-The platform supports multiple retrieval strategies:
-
-* Naive RAG
-* Hybrid RAG
-* Parent-Child RAG
-* Contextual Retrieval
-* Agentic RAG
-* Snowflake Cortex Search
-
-### Vector Search
-
-Supported vector databases:
-
-* Pinecone
-* Snowflake Cortex Search
-
-### LLM Integration
-
-Supported models:
-
-* GPT-4
-* Llama 3.x
-* Mistral
-* Claude
-* Local Ollama Models
-
----
-
-## 🏢 Data Architecture
-
-### Bronze Layer
-
-Raw source data.
-
-Examples:
-
-* raw_customers
-* raw_orders
-* raw_products
-* raw_support_tickets
-* raw_documents
-
-### Silver Layer
-
-Cleaned and standardized data.
-
-Examples:
-
-* customers_clean
-* orders_clean
-* products_clean
-* support_tickets_clean
-* document_chunks
-
-### Gold Layer
-
-Business-ready models.
-
-Examples:
-
-* dim_customer
-* dim_product
-* dim_date
-* fact_orders
-* fact_order_items
-* fact_support_tickets
-
----
-
-## 📊 Data Modeling
-
-### OLTP Schema
-
-Normalized PostgreSQL Database
-
-Tables:
-
-* customers
-* products
-* orders
-* order_items
-* support_tickets
-
-### Data Warehouse Schema
-
-Star Schema
-
-Fact Tables:
-
-* fact_orders
-* fact_order_items
-* fact_support_tickets
-
-Dimension Tables:
-
-* dim_customer
-* dim_product
-* dim_date
-
----
-
-## ⚙️ Technology Stack
-
-### Data Engineering
-
-* PostgreSQL
-* Snowflake
-* Snowpark
-* dbt
-* Python
-* Pandas
-
-### AI Engineering
-
-* LangChain
-* LangGraph
-* Pinecone
-* Snowflake Cortex Search
-* Snowflake Cortex Analyst
-* Sentence Transformers
-
-### Workflow Automation
-
-* n8n
-
-### Application Layer
-
-* Streamlit
-* FastAPI
-
-### DevOps
-
-* Docker
-* Kubernetes (k3d)
-* GitHub Actions
-
----
-
-## 📂 Repository Structure
-
-```text
-enterprise-cortex-rag-platform/
-│
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── sample_documents/
-│
-├── database/
-│   ├── postgres_schema.sql
-│   ├── seed_data.sql
-│   └── snowflake_schema.sql
-│
-├── etl/
-│   ├── extract/
-│   ├── transform/
-│   └── load/
-│
-├── dbt/
-│
-├── rag/
-│   ├── pinecone/
-│   └── cortex_search/
-│
-├── app/
-│   ├── streamlit/
-│   └── fastapi/
-│
-├── n8n/
-│   └── workflows/
-│
-├── docker/
-│
-├── k8s/
-│
-├── docs/
-│
-├── requirements.txt
-├── docker-compose.yml
-└── README.md
+```powershell
+# Docker workspace uses a separate port to avoid the local Python server:
+docker compose -f docker/docker-compose.yml up --build -d streamlit
+# Open http://localhost:8502
 ```
 
----
+For the optional monitoring profile, set a strong `GRAFANA_ADMIN_PASSWORD` in `.env` first, then run:
 
-## 🔄 End-to-End Workflow
+```powershell
+docker compose --env-file .env -f docker/docker-compose.yml --profile observability up -d
+```
 
-1. Data enters PostgreSQL or external files.
-2. n8n triggers ingestion workflows.
-3. Python ETL processes source data.
-4. dbt transforms data into warehouse models.
-5. Data is loaded into Snowflake.
-6. Cortex Search indexes document content.
-7. Cortex Analyst enables natural-language analytics.
-8. Streamlit provides an AI-powered interface.
-9. Docker and Kubernetes handle deployment.
+Grafana: localhost:3001. Prometheus: localhost:9095. Docker data persists in a named volume. Do not remove volumes unless you intend to delete the workspace.
 
----
+## Privacy by execution path
 
-## 📈 Future Enhancements
+| Mode | Data sent to AI |
+|---|---|
+| Evidence only | Nothing; no model call |
+| Internal Ollama | Full relevant evidence and recent workspace conversation history |
+| Cloud aggregates | Allowlisted finite numeric totals and a fixed task only; no names, addresses, bank details, identifiers, labels, documents or user questions |
 
-* Graph RAG using Neo4j
-* LangSmith tracing
-* RAGAS evaluation
-* DeepEval testing
-* Arize Phoenix monitoring
-* OpenTelemetry observability
-* Multi-agent workflows with LangGraph
-* MCP Server Integration
-* Azure OpenAI
-* AWS Bedrock
+Cloud analysis requires at least 10 records and 5 customers. Cloud document RAG is blocked; automatic redaction alone is not treated as a reliable privacy boundary. Automatic legacy LangSmith prompt tracing is disabled on the new workflow. Optional Langfuse exports anonymous run metadata only. Operators must secure storage/backups and review provider contracts. See the [privacy notice](docs/PRIVACY_POLICY.md).
 
----
+## Optional model and integration setup
 
-## 🎓 Learning Outcomes
+Local generation needs an already provisioned Ollama model and `OLLAMA_HOST`/`OLLAMA_MODEL`. Dense hybrid needs the optional Sentence Transformers dependencies and a cached `sentence-transformers/all-MiniLM-L6-v2` model; indexing never downloads one automatically. Original Pinecone/ETL dependencies remain in `requirements.txt`.
 
-This project demonstrates practical experience in:
+Optional Langfuse/DeepEval packages are in `requirements-observability.txt`; installation does not enable telemetry. Configure providers explicitly and verify SDK/server compatibility. No cloud judge is used by the custom citation metric.
 
-* Data Engineering
-* AI Engineering
-* Retrieval-Augmented Generation (RAG)
-* Snowflake Cortex
-* Data Warehousing
-* Solution Architecture
-* Workflow Automation
-* Kubernetes
-* Enterprise AI Systems
+RouteMind's inspected API exposes plans, health and events, not carrier shipment tracking. Configure `LOGISTICS_BASE_URL` and `CORTEX_ADMIN_USER_ID` to enable read-only plan snapshots. Location/traffic may still be simulated upstream. A real carrier feed and tenant authorization are future work. Market intelligence requires an operator-supplied licensed provider/gateway; no fabricated market figures are shown.
 
----
+## Tests
 
-## 📜 License
+```powershell
+pip install -r requirements-dev.txt
+python -m pytest tests -q --cov=cortex --cov-report=xml
+```
 
-MIT License
+Coverage includes accounts/lockout, workspace isolation, indexing, cloud payload policy, filtered calculations, export safety, real LangGraph persistence and UI flows. See [validation](docs/VALIDATION.md) for what actually ran in this release.
 
----
+## Architecture
 
-## 👨‍💻 Author
+```mermaid
+flowchart LR
+    U[Authenticated workspace] --> D[Upload and profile]
+    D --> R[(Private raw and parsed data)]
+    R --> A[Deterministic analytics and reports]
+    R --> K[Scoped document indexes]
+    A --> G[LangGraph agents]
+    K --> G
+    G --> L[Evidence or internal local model]
+    G --> P[Aggregate-only cloud policy]
+    G --> T[Audit, evaluations and metrics]
+    T --> O[Optional Langfuse / Prometheus / Grafana]
+```
 
-Hamza Ahmed Khan
+## Documentation
 
-AI/ML & Software Engineer
+- [Product requirements and before/after scope](docs/PRD.md)
+- [Architecture](docs/ARCHITECTURE.md) and [system design](docs/SYSTEM_DESIGN.md)
+- [User/operator guide](docs/USER_GUIDE.md)
+- [Privacy policy template](docs/PRIVACY_POLICY.md)
+- [Production backlog](docs/REMAINING_WORK.md) and [validation](docs/VALIDATION.md)
 
-LinkedIn: https://linkedin.com/in/hamy-khan-0a9b5275
+## Important scope boundaries
 
-GitHub: https://github.com/HamzaAhmedKhan786
+SQLite persistence and per-account workspaces are implemented; organizations/RBAC, SSO/MFA, password recovery, encrypted object storage, durable ingestion workers and security certification are not. Indexing is synchronous. AI strategy advice is provisional, not an automatic benchmark winner. GraphRAG, contextual enrichment, neural reranking, full Snowflake ingestion and Cortex Analyst/Search integration remain pending. Kafka/RabbitMQ are not required for the current bounded workflow and are not added speculatively.
+
+The original app remains at `app/legacy_streamlit_app.py` with the legacy PostgreSQL/Pinecone path. It has no new account boundary: use it only in a private development environment. Existing Kubernetes and n8n files are legacy templates and are not validated deployment instructions for this workspace release. dbt project configuration and missing orders model are supplied; warehouse execution requires separate credentials and loading setup.
+
+Author: Hamza Ahmed Khan

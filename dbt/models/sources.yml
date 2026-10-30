@@ -1,0 +1,13 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: ENTERPRISE_CORTEX_RAG
+    schema: BRONZE
+    tables:
+      - name: raw_customers
+      - name: raw_products
+      - name: raw_orders
+      - name: raw_order_items
+      - name: raw_support_tickets
+      - name: raw_document_chunks
