@@ -16,6 +16,13 @@ Captured from the actual local Streamlit app using an isolated Chrome session an
 | Integration configuration status | [10-integrations.png](10-integrations.png) |
 | Governance and privacy | [11-governance.png](11-governance.png) |
 | Mobile viewport (390 px) | [12-mobile.png](12-mobile.png) |
+| Supplied analytics detail | [13-analytics-performance.png](13-analytics-performance.png) |
+| Supplied decision brief | [14-decision-brief.png](14-decision-brief.png) |
+| Stripe subscription module | [15-subscriptions.png](15-subscriptions.png) |
+| Security and privacy controls | [16-security-controls.png](16-security-controls.png) |
+| Snowflake migration access | [17-snowflake-migration.png](17-snowflake-migration.png) |
+| Workspace-assigned live logistics | [18-live-logistics.png](18-live-logistics.png) |
+| SDK activation and local DeepEval result | [19-sdk-activation.png](19-sdk-activation.png) |
 
 The screenshots demonstrate rendered pages, signup, synthetic-data loading, index creation, actual retrieval and an evidence-only LangGraph answer. They do not establish successful local LLM generation, cloud model quality, live logistics/market connectivity or a healthy Grafana installation. Those require configured services.
 

@@ -17,6 +17,8 @@ A local-first workspace for business analytics, document retrieval and auditable
 
 ## Workspace capabilities
 
+New modules: **Subscriptions (Stripe)**, **Security**, **Snowflake migration**, **Live logistics**, and **Carol** with FAQs/custom queries. Uploads now require a local ClamAV scan and split files at least 10 MiB into parts up to 9 MiB. Langfuse/DeepEval have separate installation, configuration and runtime controls. See the [module activation guide](docs/MODULES_GUIDE.md) for exact behavior, service requirements and privacy boundaries.
+
 - **Accounts:** salted PBKDF2 passwords, login throttling, expiring sessions and signout. Each account starts empty.
 - **Data studio:** CSV, flat JSON, XLSX, PDF and TXT; bounded parsing, source fingerprints, immutable raw versions, quality profiles, explainable recommendations and optional local AI advice from a bounded sample.
 - **Analytics:** revenue trend, product contribution, revenue mix, customer concentration, weekly heatmap, operational distribution, contribution economics and regional performance. All use the same selected date/product/customer filters.
@@ -46,7 +48,7 @@ Python 3.12:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements-app.txt
+pip install -r requirements-enterprise.txt
 Copy-Item .env.example .env
 streamlit run app/streamlit_app.py
 ```
@@ -115,6 +117,7 @@ flowchart LR
 - [Product requirements and before/after scope](docs/PRD.md)
 - [Architecture](docs/ARCHITECTURE.md) and [system design](docs/SYSTEM_DESIGN.md)
 - [User/operator guide](docs/USER_GUIDE.md)
+- [New modules, agents and activation guide](docs/MODULES_GUIDE.md)
 - [Privacy policy template](docs/PRIVACY_POLICY.md)
 - [Production backlog](docs/REMAINING_WORK.md) and [validation](docs/VALIDATION.md)
 

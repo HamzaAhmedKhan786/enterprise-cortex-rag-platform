@@ -63,7 +63,25 @@ def initialize():
         CREATE TABLE IF NOT EXISTS feedback (
           owner TEXT NOT NULL REFERENCES users(id), run_id TEXT NOT NULL,
           rating TEXT NOT NULL, created REAL NOT NULL, PRIMARY KEY(owner,run_id));
+        CREATE TABLE IF NOT EXISTS preferences (
+          owner TEXT PRIMARY KEY REFERENCES users(id), cloud_aggregates INTEGER NOT NULL DEFAULT 0);
+        CREATE TABLE IF NOT EXISTS billing_accounts (
+          owner TEXT PRIMARY KEY REFERENCES users(id), customer TEXT UNIQUE NOT NULL,
+          subscription TEXT NOT NULL DEFAULT '', plan TEXT NOT NULL DEFAULT 'free',
+          status TEXT NOT NULL DEFAULT 'unpaid', updated REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS billing_events (id TEXT PRIMARY KEY, created REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS migrations (
+          id TEXT PRIMARY KEY, owner TEXT NOT NULL REFERENCES users(id), dataset TEXT NOT NULL,
+          direction TEXT NOT NULL, destination TEXT NOT NULL, status TEXT NOT NULL,
+          rows INTEGER NOT NULL DEFAULT 0, created REAL NOT NULL);
+        CREATE TABLE IF NOT EXISTS logistics_links (
+          owner TEXT NOT NULL REFERENCES users(id), plan_id TEXT NOT NULL,
+          snapshot TEXT NOT NULL DEFAULT '{}', fetched REAL NOT NULL DEFAULT 0,
+          PRIMARY KEY(owner,plan_id));
         """)
+        db.execute("BEGIN IMMEDIATE")
+        if "password_changed" not in {row[1] for row in db.execute("PRAGMA table_info(users)")}:
+            db.execute("ALTER TABLE users ADD COLUMN password_changed REAL NOT NULL DEFAULT 0")
 
 
 def _email(value):
@@ -84,7 +102,7 @@ def signup(email, password):
     uid, salt = secrets.token_hex(16), secrets.token_hex(16)
     try:
         with connection() as db:
-            db.execute("INSERT INTO users VALUES (?,?,?,?,?)", (uid, email, salt, _hash(password, salt), time.time()))
+            db.execute("INSERT INTO users(id,email,salt,password_hash,created) VALUES (?,?,?,?,?)", (uid, email, salt, _hash(password, salt), time.time()))
     except sqlite3.IntegrityError:
         raise ValueError("Unable to create account. Try signing in or use another address.") from None
     return {"id": uid, "email": email, "issued": time.time()}
@@ -171,5 +189,41 @@ def feedback(owner, run_id, rating):
 
 def erase_workspace(owner):
     with connection() as db:
-        for table in ("feedback", "messages", "runs", "events", "datasets"):
+        for table in ("feedback", "messages", "runs", "events", "datasets", "migrations", "logistics_links"):
             db.execute(f"DELETE FROM {table} WHERE owner=?", (owner,))
+
+
+def preferences(owner):
+    with connection() as db:
+        row = db.execute("SELECT cloud_aggregates FROM preferences WHERE owner=?", (owner,)).fetchone()
+    return {"cloud_aggregates": bool(row[0]) if row else False}
+
+
+def set_preferences(owner, cloud_aggregates):
+    with connection() as db:
+        db.execute("INSERT OR REPLACE INTO preferences VALUES(?,?)", (owner, int(bool(cloud_aggregates))))
+    audit(owner, "privacy_settings_updated", detail={"cloud_aggregates": bool(cloud_aggregates)})
+
+
+def session_valid(user):
+    if not user or time.time() - user.get("issued", 0) >= 8 * 3600:
+        return False
+    with connection() as db:
+        row = db.execute("SELECT password_changed FROM users WHERE id=?", (user.get("id", ""),)).fetchone()
+    return row is not None and user["issued"] >= row[0]
+
+
+def change_password(owner, current_password, new_password):
+    if not 12 <= len(new_password) <= 256:
+        raise ValueError("Use a password with 12–256 characters.")
+    with connection() as db:
+        row = db.execute("SELECT email FROM users WHERE id=?", (owner,)).fetchone()
+    if row is None:
+        raise ValueError("Account not found.")
+    login(row[0], current_password)
+    salt = secrets.token_hex(16)
+    changed = time.time()
+    with connection() as db:
+        db.execute("UPDATE users SET salt=?,password_hash=?,password_changed=? WHERE id=?", (salt, _hash(new_password, salt), changed, owner))
+    audit(owner, "password_changed")
+    return changed

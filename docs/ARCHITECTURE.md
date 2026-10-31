@@ -47,6 +47,10 @@ Legacy LangSmith auto-tracing is disabled on the new agent path. No prompt-captu
 
 ## Deployment and future architecture
 
+### Connected module agents
+
+`module_agents.py` supplies SubscriptionAgent, SecurityAgent, MigrationAgent, LogisticsAgent, UploadAgent, CarolAgent and ObservabilityAgent. Each compiles a LangGraph authorization/tool workflow and records only metadata. Webhooks enter a separate narrow FastAPI service at `/webhooks/stripe` and use Stripe signature verification, customer binding, event deduplication and authoritative subscription re-fetching. Migration credentials are operator-scoped and administrator-only. Logistics access is constrained by stored workspace assignments. Uploads scan the complete stream through local ClamD before deep parsing/splitting; unavailable scans fail closed. Carol uses trusted FAQ responses or delegates to the existing evidence/analytics graph. See `MODULES_GUIDE.md` for protocols, readiness and deployment profiles.
+
 Docker serves the workspace on localhost:8502, separate from the local Python server on 8501. Named-volume data persists across restarts. An optional observability profile adds metrics, Prometheus and Grafana. The app runs as a non-root user and the build context excludes environment files and private storage.
 
 For production: TLS reverse proxy, OIDC, organization membership/RBAC, PostgreSQL row-level security, encrypted object storage, network egress policy, private inference, asynchronous ingestion workers, deletion lifecycle and audited migrations. Use RabbitMQ for task dispatch or Kafka for replayable domain event streams only when those requirements exist; neither is required for this bounded release.

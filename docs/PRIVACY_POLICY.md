@@ -1,6 +1,6 @@
 # Cortex deployment privacy notice
 
-Version: 30 October 2026. This describes the implemented software behavior. The deploying organization must supply its legal identity, contact address, processing purposes, lawful basis where applicable, retention schedule, regional hosting details and customer agreements before public deployment. This template is not a legal certification.
+Version: 31 October 2026. This describes the implemented software behavior. The deploying organization must supply its legal identity, contact address, processing purposes, lawful basis where applicable, retention schedule, regional hosting details and customer agreements before public deployment. This template is not a legal certification.
 
 ## Information stored
 
@@ -23,6 +23,12 @@ Streamlit usage statistics are disabled by configuration. The new workflow disab
 RouteMind reads are administrator-only and use configured server endpoints. Only numeric route metrics are displayed from plan responses; full upstream addresses and names are not sent to AI. Market gateway values are displayed with source timestamps. Operators must authorize and secure each connected application; no third-party connection is enabled by default. The application does not sell data or send marketing email.
 
 ## Access, deletion and retention
+
+### Connected modules
+
+Stripe-hosted checkout/portal collects payment information directly; Cortex stores opaque Stripe references and subscription status, not card/bank details. Signed event IDs and billing records are retained separately from workspace content, and workspace erasure does not cancel a subscription. Users manage cancellation in Stripe's portal; the operator must define billing-record retention and account deletion procedures.
+
+An explicitly confirmed Snowflake export sends all selected dataset columns to the operator-configured warehouse. This is a separate external data transfer, not cloud AI inference consent. Importing warehouse rows creates a local source. Local ClamAV receives full file bytes over the approved loopback/internal connection; no third-party public malware-upload API is used. Uploaded file bytes temporarily exist in server memory before scanning; only accepted sources enter active workspace storage. Generated part archives stay in that private browser session until cleared/expired. Logistics assignments and cached numeric snapshots are scoped to the account. DeepEval citation checking is local and telemetry-disabled; Langfuse remains metadata-only.
 
 Users can inspect/export approved analytics records and delete source datasets/indexes. Deleting a dataset does not retroactively delete prior chat excerpts. **Erase workspace content** removes active datasets, chunks, messages, feedback, run and audit rows while retaining the login account. SQLite free pages, backups, exports, screenshots and external provider records are not securely erased by that action. Account deletion and data-subject requests currently require the deploying operator; provide a real contact channel before launch. Agree on retention and backup expiry with the operator.
 

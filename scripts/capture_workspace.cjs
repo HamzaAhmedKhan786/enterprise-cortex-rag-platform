@@ -20,12 +20,15 @@ const crypto = require('node:crypto');
     }
     async function capture(name) {
       await settled();
-      if (name !== '03-analytics-details.png') await page.evaluate(() => document.querySelector('[data-testid="stMain"]')?.scrollTo(0, 0));
+      if (!['03-analytics-details.png', '19-sdk-activation.png'].includes(name)) {
+        await page.evaluate(() => {for (const el of document.querySelectorAll('*')) {if (el.scrollHeight > el.clientHeight && /auto|scroll/.test(getComputedStyle(el).overflowY)) el.scrollTop = 0;} window.scrollTo(0, 0);});
+        await page.waitForTimeout(250);
+      }
       await page.screenshot({path: path.join(output, name), fullPage: true});
       console.log('Captured ' + name);
     }
     async function navigate(name) {
-      await page.getByText(name, {exact: true}).first().click();
+      await page.getByText(name === 'AI copilot' ? 'Carol · AI copilot' : name, {exact: true}).first().click();
       await settled();
     }
     await page.goto(process.env.CORTEX_URL || 'http://127.0.0.1:8501');
@@ -67,7 +70,18 @@ const crypto = require('node:crypto');
     await page.getByText('Was this answer useful?', {exact: true}).waitFor();
     await capture('08-copilot.png');
     await navigate('Operations');
+    await page.getByRole('button', {name: 'Run DeepEval local citation test'}).click();
     await capture('09-operations.png');
+    await page.getByText('Langfuse & DeepEval activation', {exact: true}).evaluate(el => {el.style.scrollMarginTop = '80px'; el.scrollIntoView({block: 'start'});});
+    await capture('19-sdk-activation.png');
+    await navigate('Subscriptions');
+    await capture('15-subscriptions.png');
+    await navigate('Security');
+    await capture('16-security-controls.png');
+    await navigate('Snowflake migration');
+    await capture('17-snowflake-migration.png');
+    await navigate('Live logistics');
+    await capture('18-live-logistics.png');
     await navigate('Integrations');
     await capture('10-integrations.png');
     await navigate('Governance');

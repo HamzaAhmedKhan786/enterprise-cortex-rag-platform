@@ -12,6 +12,8 @@
 
 ## Before multi-customer public production
 
+The connected-module increment now implements Stripe lifecycle integration, scoped RouteMind plan polling, Snowflake transfer adapters, file-scan/split gates, password/session controls and SDK activation. These do not remove deployment prerequisites: configure real provider credentials and roles, run ClamAV with current signatures, verify webhook deliveries in Stripe test mode, define commercial entitlements before live payments, and exercise Snowflake/RouteMind/Langfuse against approved endpoints. Live services were not configured in the development environment. The detailed incremental scope is in `MODULES_GUIDE.md`.
+
 1. OIDC/SSO/MFA, verified emails, recovery, organization membership and role permissions; edge rate limits and abuse prevention.
 2. PostgreSQL RLS and migrations, encrypted object storage, managed secrets, TLS, encryption/backup lifecycle and tested restore/deletion.
 3. Durable ingestion workers and job cancellation/recovery; parsing in resource-isolated sandboxes, malware scanning and security testing. Current indexing is synchronous and can be interrupted.

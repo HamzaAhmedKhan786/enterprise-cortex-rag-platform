@@ -2,13 +2,16 @@ name: Enterprise Cortex CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, development]
   pull_request:
     branches: [main]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      DEEPEVAL_TELEMETRY_OPT_OUT: "1"
+      DEEPEVAL_HOME: ${{ github.workspace }}/data/private/deepeval
 
     steps:
       - name: Checkout repository

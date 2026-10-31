@@ -1,5 +1,9 @@
 # System design
 
+## Connected-module extension
+
+See `MODULES_GUIDE.md` for implemented protocols and deployment. Stripe uses a separately hosted signed-event receiver and server-owned customer bindings; redirects never grant subscription status. Snowflake migration is confirmed/admin-only, bounded and non-overwriting, with persisted job outcomes and no repeat append after completion. RouteMind snapshots require workspace assignments and report freshness independently of upstream simulation. All modules use account-gated LangGraph tool agents; Carol alone delegates language interpretation. The upload gate scans the complete stream using local ClamAV before format parsing/splitting, rejects active-content patterns, and registers all source parts transactionally. New tables hold privacy consent, billing references/event IDs, migration metadata and assigned logistics snapshots. Password changes timestamp-revoke older sessions on their next request. Billing records remain separate from workspace-content erasure. All keys remain server configuration, not LLM context or browser-editable credentials.
+
 ## Data contracts
 
 Tables require `date, product, customer_id, revenue`. Optional analytics fields: `cost, quantity, unit_price, category, region, status, delivery_days, promised_days`. Each row is one record, not necessarily one order. Values must use one currency (EUR in this UI). Uploads are retained intact locally, but only approved analytics columns appear in charts/exports. Unknown columns never enter AI through the analytics route.

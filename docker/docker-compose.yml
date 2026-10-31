@@ -15,6 +15,9 @@ services:
       OLLAMA_HOST: http://host.docker.internal:11434
       LANGSMITH_TRACING: "false"
       LANGCHAIN_TRACING_V2: "false"
+      CLAMAV_HOST: clamav
+      CLAMAV_PORT: "3310"
+      DEEPEVAL_TELEMETRY_OPT_OUT: "1"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
@@ -25,6 +28,26 @@ services:
       timeout: 5s
       retries: 3
     security_opt: ["no-new-privileges:true"]
+
+  billing-api:
+    image: enterprise-cortex-workspace:local
+    profiles: [billing]
+    command: ["python", "-m", "uvicorn", "cortex.api:app", "--host", "0.0.0.0", "--port", "8503"]
+    ports: ["127.0.0.1:8503:8503"]
+    env_file:
+      - path: ../.env
+        required: false
+    environment:
+      CORTEX_DB: /app/data/private/cortex.sqlite3
+    volumes:
+      - workspace_data:/app/data/private
+
+  clamav:
+    image: clamav/clamav:stable
+    profiles: [security]
+    ports: ["127.0.0.1:3311:3310"]
+    volumes:
+      - clamav_signatures:/var/lib/clamav
 
   metrics:
     image: enterprise-cortex-workspace:local
@@ -78,3 +101,4 @@ volumes:
   workspace_data:
   grafana_data:
   postgres_data:
+  clamav_signatures:

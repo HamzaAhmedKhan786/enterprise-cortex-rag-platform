@@ -19,9 +19,9 @@ METRIC_COLUMNS = {"date", "product", "customer_id", "category", "region", "quant
 REQUIRED = {"date", "product", "customer_id", "revenue"}
 
 
-def parse_file(name, raw):
-    if not raw or len(raw) > MAX_BYTES:
-        raise ValueError("Upload a nonempty file up to 10 MB.")
+def parse_file(name, raw, max_bytes=MAX_BYTES):
+    if not raw or len(raw) > max_bytes:
+        raise ValueError("File is empty or exceeds the permitted size.")
     suffix = Path(name).suffix.lower()
     if suffix == ".txt":
         text = raw.decode("utf-8-sig")
@@ -59,8 +59,8 @@ def parse_file(name, raw):
         kind = "table"
     else:
         raise ValueError("Supported formats: CSV, JSON, XLSX, PDF and UTF-8 TXT.")
-    if kind == "document" and (not payload["text"].strip() or len(payload["text"]) > 2_000_000):
-        raise ValueError("No usable text found, or text exceeds 2 million characters. Scanned PDFs need OCR first.")
+    if kind == "document" and (not payload["text"].strip() or len(payload["text"]) > 10_000_000):
+        raise ValueError("No usable text found, or text exceeds 10 million characters. Scanned PDFs need OCR first.")
     return kind, payload
 
 
