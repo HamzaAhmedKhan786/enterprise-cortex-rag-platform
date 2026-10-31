@@ -15,40 +15,32 @@ def _error(exc):
 
 
 def subscriptions(owner):
-    st.title("Subscriptions & billing")
-    st.write("Stripe-hosted checkout and self-service subscription management. Cortex never collects card or bank details.")
+    st.title("Settings · Billing")
+    st.write("Stripe-hosted checkout, payment methods, invoices and subscription management.")
     current = billing.account(owner)
-    a, b = st.columns(2)
+    a, b, c = st.columns(3)
     a.metric("Current plan", current["plan"].title())
     b.metric("Subscription status", current["status"])
-    st.caption("A success-page redirect does not activate a subscription. Signed webhooks or a verified Stripe refresh reconcile its status. Existing workspace limits remain unchanged in this release; paid usage quotas are not advertised.")
-    configured = bool(os.getenv("STRIPE_SECRET_KEY")) and bool(importlib.util.find_spec("stripe"))
-    if not configured:
-        st.info("Configure STRIPE_SECRET_KEY (test mode), plan price IDs and STRIPE_WEBHOOK_SECRET to connect billing.")
-    agent = SubscriptionAgent()
-    for name in ("starter", "team"):
-        with st.container(border=True):
-            st.subheader(name.title())
-            st.caption("The exact recurring amount, currency and terms are displayed by Stripe before you confirm payment.")
-            if st.button("Open " + name.title() + " checkout", disabled=not configured or not billing.prices()[name], key="checkout_" + name):
-                try:
-                    result = agent.run(owner, "checkout", plan=name)
-                    st.link_button("Continue to Stripe " + ("test checkout" if result["test_mode"] else "checkout"), result["url"])
-                except Exception as exc:
-                    _error(exc)
-    a, b = st.columns(2)
-    if a.button("Open billing portal", disabled=not configured or not current.get("customer")):
-        try:
-            result = agent.run(owner, "portal")
-            st.link_button("Manage subscription securely at Stripe", result["url"])
-        except Exception as exc:
-            _error(exc)
-    if b.button("Refresh subscription status", disabled=not configured or not current.get("customer")):
-        try:
-            agent.run(owner, "refresh")
-            st.rerun()
-        except Exception as exc:
-            _error(exc)
+    c.metric("Effective allowance", billing.limits(owner)["name"].title())
+    st.caption("Verified webhooks activate paid allowances. Checkout returns never grant access. Annual and monthly pricing are configured in Stripe.")
+    try:
+        base = billing._base_url()
+        for path, label in [("/pricing", "Plans & pricing"), ("/workspace/settings/billing", "Billing overview"),
+                            ("/workspace/settings/billing/payment-methods", "Payment methods"),
+                            ("/workspace/settings/billing/invoices", "Invoices & payments"),
+                            ("/workspace/settings/billing/usage", "AI usage & limits")]:
+            st.link_button(label, base + path)
+        if owner == os.getenv("CORTEX_ADMIN_USER_ID"):
+            st.link_button("Admin billing dashboard", base + "/admin/billing")
+    except ValueError as exc:
+        _error(exc)
+    st.info("Billing runs on the companion service (default port 8503). Sign in there with your workspace account; its session is separate and secure.")
+    if not os.getenv("STRIPE_SECRET_KEY"):
+        st.warning("Stripe is not configured. Add test credentials and recurring Price IDs to .env, enable the Stripe customer portal, and forward signed webhooks to port 8503.")
+    usage = billing.usage(owner)
+    st.subheader("Current usage · " + usage["period_utc"] + " UTC")
+    st.write(f"Custom AI requests: {usage['ai_requests']} / {usage['limits']['ai_requests']} · Files: {usage['files']} / {usage['limits']['files']}")
+    st.caption(usage["notice"])
 
 
 def security_page(owner):

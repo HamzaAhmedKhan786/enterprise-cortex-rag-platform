@@ -11,17 +11,11 @@ Keep real keys in the ignored `.env` file. Use `.env.example` as a reference; do
 
 ## Subscription module — SubscriptionAgent
 
-Stripe-hosted Checkout collects payment details outside Cortex. Configure `STRIPE_SECRET_KEY` with a **test** key, `STRIPE_PRICE_STARTER` / `STRIPE_PRICE_TEAM` with existing recurring price IDs, `STRIPE_WEBHOOK_SECRET`, and `APP_BASE_URL`. Cortex does not invent plan prices. Stripe shows the actual recurring amount, currency and cancellation terms before the user confirms.
+The expanded implementation is documented in [STRIPE_BILLING.md](STRIPE_BILLING.md). It supplies real authenticated routes on the companion service (port 8503): pricing, billing overview, payment methods, invoices, usage and admin billing. Set `BILLING_BASE_URL`, test credentials, monthly/annual Pro/Team/Enterprise price IDs and webhook secret. Configure the Stripe Customer Portal for payment methods, invoices, billing details, plan changes and cancellation. Legacy Starter/Team monthly price variables remain supported.
 
-```powershell
-.\.venv312\Scripts\python.exe -m uvicorn cortex.api:app --host 127.0.0.1 --port 8503
-# In a separately installed/authenticated Stripe CLI:
-stripe listen --forward-to localhost:8503/webhooks/stripe
-```
+Verified, mode-matching webhooks re-fetch current subscription/invoice state, deduplicate event IDs and authorize allowances through the billing-period end. Checkout returns and manual status refreshes cannot grant paid access. File/storage and custom AI request quotas are enforced server-side. Saved-card summaries contain only references, brand, last four and expiry; Stripe hosts card entry and replacement. Admin billing requires the existing operator-assigned account plus short-lived password re-verification. No shared administrator password is used.
 
-Copy the webhook signing secret from your Stripe setup into `.env`; never commit it. Deploy the webhook behind HTTPS for production. Handle `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`. The handler verifies the **raw-body signature**, checks live/test mode, deduplicates event IDs, binds customers through the server's own account mapping, and re-fetches authoritative subscription state. A checkout redirect alone never activates a plan. Unknown price IDs grant no paid plan.
-
-Existing workspaces retain the same file/row/storage limits. This release supplies subscription lifecycle/status, not an invented paid-feature entitlement schedule. Define commercial plan benefits before accepting real subscriptions. Live keys are rejected unless `STRIPE_ALLOW_LIVE=true` is explicitly configured. The development tests never make real Stripe requests or charges. The billing portal lets customers manage their subscriptions directly in Stripe.
+Default application allowances are editable; commercial prices are configured in Stripe. No real test checkout has been executed because credentials/products were not supplied. Provider SDK calls in tests are mocked, signature verification is real, and token/provider-cost consumption is explicitly not measured. Follow the guide before accepting payments.
 
 ## Security module — SecurityAgent
 

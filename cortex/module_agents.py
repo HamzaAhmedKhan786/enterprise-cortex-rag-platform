@@ -63,7 +63,9 @@ class SubscriptionAgent(ModuleAgent):
     name = "subscription_agent"
     def tools(self):
         from cortex import billing
-        return {"checkout": billing.checkout, "portal": billing.portal, "refresh": billing.refresh}
+        return {"checkout": billing.checkout, "portal": billing.portal, "refresh": billing.refresh,
+                "payment_methods": billing.payment_methods, "default_method": billing.default_method,
+                "remove_method": billing.remove_method, "invoices": billing.invoices, "usage": billing.usage}
 
 
 class SecurityAgent(ModuleAgent):

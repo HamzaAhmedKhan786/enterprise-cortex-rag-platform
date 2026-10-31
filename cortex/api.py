@@ -9,6 +9,9 @@ from cortex import billing, store
 
 app = FastAPI(title="Cortex service endpoints", docs_url=None, redoc_url=None)
 
+from cortex.billing_routes import router as billing_router
+app.include_router(billing_router)
+
 
 @app.get("/health")
 def health():

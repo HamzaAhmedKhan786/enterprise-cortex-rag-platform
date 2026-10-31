@@ -15,6 +15,12 @@ A local-first workspace for business analytics, document retrieval and auditable
 | Aspirational enterprise feature list | Explicit implemented, optional and pending capabilities |
 | No visible data boundary | Local full-content inference; cloud numeric aggregates only |
 
+## Subscription billing
+
+The Stripe increment adds authenticated billing pages, monthly/annual plan checkout, hosted card management, safe saved-card summaries, invoices/PDF links, usage allowances and an administrator dashboard with password re-verification. Signed webhooks authorize paid allowances; checkout redirects never do. **Stripe keys/products are not configured here; no real test payment has been performed.**
+
+Run the companion service on port 8503 and follow the [Stripe setup and payment verification guide](docs/STRIPE_BILLING.md). It documents exact routes, configuration, database migrations, test coverage and remaining production requirements. No final commercial prices are hardcoded.
+
 ## Workspace capabilities
 
 New modules: **Subscriptions (Stripe)**, **Security**, **Snowflake migration**, **Live logistics**, and **Carol** with FAQs/custom queries. Uploads now require a local ClamAV scan and split files at least 10 MiB into parts up to 9 MiB. Langfuse/DeepEval have separate installation, configuration and runtime controls. See the [module activation guide](docs/MODULES_GUIDE.md) for exact behavior, service requirements and privacy boundaries.
@@ -40,6 +46,8 @@ Fresh workspace screenshots are in [docs/screenshots](docs/screenshots). The cap
 ![Decision brief with deterministic signals and evidence](docs/screenshots/14-decision-brief.png)
 
 ![Evidence-backed copilot](docs/screenshots/08-copilot.png)
+
+![Authenticated billing overview, Free account before Stripe configuration](docs/screenshots/21-billing-overview.png)
 
 ## Quick start
 

@@ -35,3 +35,9 @@ Users can inspect/export approved analytics records and delete source datasets/i
 ## Security and limitations
 
 Passwords use PBKDF2-HMAC-SHA256 and random salts. Login attempts are rate-limited per account; server sessions expire after eight hours. Signup currently does not verify email and there is no password reset, SSO or MFA. TLS, encrypted disks/backups, organization roles, gateway rate limiting, malware scanning, independent security review and breach-response procedures are deployment prerequisites. Do not describe this release as GDPR/SOC 2 certified or fully production hardened.
+
+## Billing data and usage records
+
+Stripe hosts card entry, payment details and customer billing-address management. Cortex retains owner-scoped customer/subscription/product/price/payment/invoice references, status and period metadata, safe card summaries (brand, last four, expiry), application quota reservations and billing audit metadata. It never stores card numbers or CVVs. These records are not sent to AI models or attached to Langfuse prompts. Billing sessions are stored as token hashes and expire; password changes revoke older sessions.
+
+Workspace-content erasure does not erase billing records or Stripe customer records. Operators must define applicable financial-record retention and separately handle account/Stripe deletion requests. Invoice/PDF links open Stripe directly. Stripe is a separate payment processor; review the processor terms/privacy settings before offering paid service. Default usage counters measure custom workflow attempts, not actual tokens or provider spend.

@@ -51,3 +51,11 @@ Market gateway: `GET /snapshot → {as_of: timezone-aware ISO8601, indicators: [
 ## Verification
 
 Tests cover auth/lockout, tenant isolation, index deletion/failure, deduplication, filters/date boundaries, cloud egress, local endpoint policy, formula escaping and actual LangGraph persistence. UI smoke tests use Streamlit AppTest; browser captures verify actual rendered layouts when host permissions allow. External integrations are contract-tested with mocks unless credentials/endpoints are configured. Never describe unexecuted Docker/cloud/index paths as validated.
+
+## Subscription lifecycle and quota consistency
+
+Flow: workspace login → separate billing session → configured Price selection → reusable Stripe Checkout → signed webhook → latest Stripe subscription/invoice fetch → atomic event deduplication + billing-state persistence → paid allowance until period end. A checkout-return query never changes entitlement. Refresh may update status or revoke verification but cannot elevate access. Delayed/reversed events read current Stripe state; reconciliation failures return 503 for retry. Current subscription defaults and customer invoice defaults are updated together when selecting a card; deletion is guarded.
+
+Real routes: /pricing, /workspace/settings/billing, /workspace/settings/billing/payment-methods, /workspace/settings/billing/invoices, /workspace/settings/billing/usage and /admin/billing. Billing records remain account-scoped. Admin actions require role assignment, session step-up, CSRF, confirmation and audit metadata. Invoice pagination validates ownership of cursors; payment/invoice links allow only HTTPS Stripe domains.
+
+Custom AI requests reserve one UTC calendar-month allowance atomically before execution, including failed attempts; FAQ and billing tools are excluded. File/storage limits apply to both internal ingestion and scanned upload batches. Tokens/cost are unknown, not estimated or invoiced. Additive schema migration is repeatable and preserves original accounts/data. No provider keys are persisted in the application database.

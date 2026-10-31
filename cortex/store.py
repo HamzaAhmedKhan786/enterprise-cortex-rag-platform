@@ -82,6 +82,8 @@ def initialize():
         db.execute("BEGIN IMMEDIATE")
         if "password_changed" not in {row[1] for row in db.execute("PRAGMA table_info(users)")}:
             db.execute("ALTER TABLE users ADD COLUMN password_changed REAL NOT NULL DEFAULT 0")
+    from cortex.billing_schema import migrate
+    migrate()
 
 
 def _email(value):

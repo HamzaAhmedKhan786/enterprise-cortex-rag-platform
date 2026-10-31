@@ -96,6 +96,7 @@ def secure_ingest(owner, name, raw):
     parsed = [(n, content, *data.parse_file(n, content, max_bytes=security.MAX_UPLOAD)) for n, content in sources]
     ids = []
     with store.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
         pending, seen = [], {}
         for filename, content, kind, payload in parsed:
             digest = hashlib.sha256(content).hexdigest()
@@ -112,8 +113,10 @@ def secure_ingest(owner, name, raw):
                 ids.append(did)
                 seen[digest] = did
         usage = db.execute("SELECT COUNT(*),COALESCE(SUM(LENGTH(raw)),0) FROM datasets WHERE owner=?", (owner,)).fetchone()
-        if usage[0] + len(pending) > 50 or usage[1] + sum(len(r[5]) for r in pending) > 100 * 1024 * 1024:
-            raise ValueError("Upload would exceed the workspace's 50-file / 100-MiB limit. No parts were registered.")
+        from cortex.billing import limits
+        cap = limits(owner, db)
+        if usage[0] + len(pending) > cap["files"] or usage[1] + sum(len(r[5]) for r in pending) > cap["storage_mb"] * 1024 * 1024:
+            raise ValueError("Upload would exceed the workspace file or storage allowance. No parts were registered.")
         db.executemany("INSERT INTO datasets(id,owner,name,kind,digest,raw,payload,profile,status,created) VALUES(?,?,?,?,?,?,?,?,?,?)", pending)
     manifest = {"version": 1, "method": method, "original_sha256": hashlib.sha256(raw).hexdigest(), "original_bytes": len(raw),
                 "parts": [{"name": n, "bytes": len(content), "sha256": hashlib.sha256(content).hexdigest()} for n, content in parts]}

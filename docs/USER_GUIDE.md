@@ -86,3 +86,9 @@ python -m pytest tests -q --cov=cortex --cov-report=xml
 If a restricted Windows environment cannot create pytest's system temp folder, choose a fresh folder under `data/test-temp/` using `--basetemp`. If an index fails, check the model cache or select BM25. If the assistant fails, check the provider in `.env`; the UI intentionally hides raw provider errors. If an integration is disconnected, configure its server URL and verify reachability from the container (host services require `host.docker.internal`).
 
 Read **Governance** for storage/erasure behavior. Before exposing the service publicly, complete the production blockers in `docs/REMAINING_WORK.md`.
+
+## Billing and payment methods
+
+Open Subscriptions and select the billing page link. Start the companion API on port 8503 and sign in there with the same workspace account. Pricing displays configured monthly/annual checkout options; exact prices/taxes are shown in Stripe. Payment Methods retrieves safe card summaries and opens Stripe for add/replace; eligible cards can be made default or removed. Invoices links to Stripe-hosted payment pages and PDF downloads. Usage shows file/storage/custom-query allowances, not token or provider-cost estimates.
+
+A checkout success return does not activate paid access: wait for a verified webhook. Use the Stripe Portal for plan changes, cancellation and billing details. Administrators open Admin Billing and re-enter their own password; no shared admin credentials exist. Setup and provider acceptance checks: [STRIPE_BILLING.md](STRIPE_BILLING.md). Test credentials/products were not configured during development.

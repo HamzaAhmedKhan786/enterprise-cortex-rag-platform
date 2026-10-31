@@ -28,3 +28,7 @@ The connected-module increment now implements Stripe lifecycle integration, scop
 ## Queue/broker decision
 
 Do not deploy both Kafka and RabbitMQ by default. For durable ingestion tasks use a transactional job table or a task queue first. Choose RabbitMQ for delivery/acknowledgment-based worker dispatch; choose Kafka when retained event replay and multiple downstream consumers are required. Define idempotency, tenant isolation, retries and dead-letter behavior before adding either. No broker is installed in this release.
+
+## Billing increment follow-up
+
+Authenticated billing routes, saved-card management, invoice links, configurable monthly/annual checkout and transactional application quotas are now implemented; see STRIPE_BILLING.md. Still required: configure Stripe Test Mode products/keys/portal/webhook destination and run actual hosted checkout, failed-payment/3DS, renewal, upgrade/downgrade and cancellation acceptance flows. No provider test payment was made without credentials. Final pricing/commercial entitlements, token/cost attribution, BYOK storage/accounting, organization billing and production MFA are not complete.

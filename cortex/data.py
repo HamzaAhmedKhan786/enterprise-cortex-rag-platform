@@ -86,12 +86,15 @@ def ingest(owner, name, raw):
     digest = hashlib.sha256(raw).hexdigest()
     dataset_id = secrets.token_hex(16)
     with store.connection() as db:
+        db.execute("BEGIN IMMEDIATE")
+        from cortex.billing import limits
+        cap = limits(owner, db)
         existing = db.execute("SELECT id FROM datasets WHERE owner=? AND digest=?", (owner, digest)).fetchone()
         if existing:
             return existing[0]
         usage = db.execute("SELECT COUNT(*),COALESCE(SUM(LENGTH(raw)),0) FROM datasets WHERE owner=?", (owner,)).fetchone()
-        if usage[0] >= 50 or usage[1] + len(raw) > 100 * 1024 * 1024:
-            raise ValueError("Workspace limit: 50 files and 100 MB. Remove unused datasets first.")
+        if usage[0] >= cap["files"] or usage[1] + len(raw) > cap["storage_mb"] * 1024 * 1024:
+            raise ValueError("Workspace file or storage allowance reached. Review Billing usage or remove unused datasets.")
         db.execute("INSERT INTO datasets(id,owner,name,kind,digest,raw,payload,profile,status,created) VALUES(?,?,?,?,?,?,?,?,?,?)",
                    (dataset_id, owner, Path(name).name[:200], kind, digest, raw, json.dumps(payload), json.dumps(profile(kind, payload)), "uploaded", time.time()))
     store.audit(owner, "dataset_uploaded", dataset_id, {"bytes": len(raw), "kind": kind})

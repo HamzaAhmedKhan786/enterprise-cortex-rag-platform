@@ -149,6 +149,8 @@ def emit_trace(run_id, route, duration, status):
 
 
 def run_agents(owner, question, route="documents", mode="Evidence only", frame=None, dataset_id=None):
+    from cortex import billing
+    reservation = billing.reserve_request(owner)
     started, run_id = time.perf_counter(), secrets.token_hex(12)
     # History remains workspace-local and is never passed to cloud explanations.
     history = [{"question": m["question"], "answer": m["answer"]} for m in reversed(store.history(owner, "messages", 4))]
@@ -161,8 +163,10 @@ def run_agents(owner, question, route="documents", mode="Evidence only", frame=N
         sources = [{"source": h["source"], "citation": h["citation"]} for h in result.get("hits", [])]
         store.save_message(owner, question, result["answer"], sources, run_id)
         emit_trace(run_id, route, duration, status)
+        billing.finish_request(owner, reservation)
         return result
     except Exception:
+        billing.finish_request(owner, reservation, failed=True)
         duration = time.perf_counter() - started
         store.save_run(owner, run_id, route, "failed", duration, [{"agent": "workflow", "status": "failed", "detail": "Request failed; no raw error or input exported"}])
         emit_trace(run_id, route, duration, "failed")

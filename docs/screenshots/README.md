@@ -27,3 +27,7 @@ Captured from the actual local Streamlit app using an isolated Chrome session an
 The screenshots demonstrate rendered pages, signup, synthetic-data loading, index creation, actual retrieval and an evidence-only LangGraph answer. They do not establish successful local LLM generation, cloud model quality, live logistics/market connectivity or a healthy Grafana installation. Those require configured services.
 
 To reproduce, install Playwright in a development Node environment and run `node scripts/capture_workspace.cjs` with the app running on localhost:8501. Set `PLAYWRIGHT_MODULE` if the package is located outside normal Node resolution. `CORTEX_URL` can target another local test instance. Never run this capture with production/customer data.
+
+## Billing increment screenshots
+
+`20-billing-pricing.png`, `21-billing-overview.png`, `22-billing-payment-methods.png`, `23-billing-invoices.png`, `24-billing-usage.png`, and `25-billing-mobile.png` show the real local service with a temporary synthetic empty account, Free allowances and no configured Stripe credentials. They are not evidence of a successful payment. Regenerate using `scripts/capture_billing.cjs` with the two Python services running and Playwright/Chrome available. The temporary capture identity is deleted afterward.
