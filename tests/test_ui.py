@@ -26,7 +26,15 @@ def test_signup_dashboard_pages_and_logout(tmp_path, monkeypatch):
     app.multiselect[0].set_value(["Studio Laptop"]).run()
     assert not app.exception
     assert int(app.metric[1].value.replace(",", "")) < 540
-    for page in ["Reports", "Data studio", "Knowledge", "AI copilot", "Operations", "Integrations", "Governance"]:
+    next(button for button in app.sidebar.button if button.label == "Private workspace").click().run()
+    assert app.sidebar.radio[0].value == "Security" and not app.exception
+    app.checkbox[0].check()
+    next(button for button in app.button if button.label == "Save data controls").click().run()
+    assert store.preferences(owner)["cloud_aggregates"] is True
+    app.sidebar.radio[0].set_value("Snowflake migration").run()
+    assert not any(button.label == "Export to a new table" for button in app.button)
+    monkeypatch.setenv("CORTEX_ADMIN_USER_ID", owner)
+    for page in ["Reports", "Data studio", "Knowledge", "AI copilot", "Subscriptions", "Security", "Snowflake migration", "Live logistics", "Operations", "Integrations", "Governance"]:
         app.sidebar.radio[0].set_value(page).run()
         assert not app.exception, page
     next(button for button in app.button if button.label == "Sign out").click().run()

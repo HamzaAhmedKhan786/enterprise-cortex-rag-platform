@@ -48,6 +48,8 @@ def policy_agent(state):
         raise ValueError("Select a supported analysis route.")
     if mode == "Cloud aggregates" and route != "analytics":
         raise ValueError("Cloud document RAG is blocked. Use local inference for uploaded text.")
+    if mode == "Cloud aggregates" and not store.preferences(state["owner"])["cloud_aggregates"]:
+        raise ValueError("Enable aggregate-only cloud explanations in Security before using a cloud model.")
     return _step(state, "Privacy & access", "Workspace-scoped tools; cloud content blocked")
 
 
@@ -104,6 +106,13 @@ def answer_agent(state):
 def verification_agent(state):
     if state["route"] == "documents" and not state.get("hits") and state.get("mode") == "Local Ollama":
         return {"answer": extractive_answer([]), **_step(state, "Verification", "No evidence: answer replaced with abstention")}
+    if state.get("hits"):
+        try:
+            from cortex.observability import evaluate_citations
+            result = evaluate_citations(state["answer"], len(state["hits"]))
+            return _step(state, "Verification", f"DeepEval citation validity: {result['score']}; semantic faithfulness requires separate evaluation")
+        except ImportError:
+            pass
     return _step(state, "Verification", "Evidence attached; generated prose is not certified for factual correctness")
 
 
@@ -125,7 +134,7 @@ def build_graph():
 
 
 def emit_trace(run_id, route, duration, status):
-    if os.getenv("LANGFUSE_ENABLED", "false").lower() != "true":
+    if os.getenv("LANGFUSE_ENABLED", "true").lower() != "true" or not all(os.getenv(k) for k in ("LANGFUSE_HOST", "LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY")):
         return
     # Do not attach LangChain callbacks: those capture prompts and retrieved content.
     try:
@@ -140,6 +149,8 @@ def emit_trace(run_id, route, duration, status):
 
 
 def run_agents(owner, question, route="documents", mode="Evidence only", frame=None, dataset_id=None):
+    from cortex import billing
+    reservation = billing.reserve_request(owner)
     started, run_id = time.perf_counter(), secrets.token_hex(12)
     # History remains workspace-local and is never passed to cloud explanations.
     history = [{"question": m["question"], "answer": m["answer"]} for m in reversed(store.history(owner, "messages", 4))]
@@ -152,8 +163,10 @@ def run_agents(owner, question, route="documents", mode="Evidence only", frame=N
         sources = [{"source": h["source"], "citation": h["citation"]} for h in result.get("hits", [])]
         store.save_message(owner, question, result["answer"], sources, run_id)
         emit_trace(run_id, route, duration, status)
+        billing.finish_request(owner, reservation)
         return result
     except Exception:
+        billing.finish_request(owner, reservation, failed=True)
         duration = time.perf_counter() - started
         store.save_run(owner, run_id, route, "failed", duration, [{"agent": "workflow", "status": "failed", "detail": "Request failed; no raw error or input exported"}])
         emit_trace(run_id, route, duration, "failed")

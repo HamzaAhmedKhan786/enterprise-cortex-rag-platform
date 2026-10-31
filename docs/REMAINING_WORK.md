@@ -12,6 +12,8 @@
 
 ## Before multi-customer public production
 
+The connected-module increment now implements Stripe lifecycle integration, scoped RouteMind plan polling, Snowflake transfer adapters, file-scan/split gates, password/session controls and SDK activation. These do not remove deployment prerequisites: configure real provider credentials and roles, run ClamAV with current signatures, verify webhook deliveries in Stripe test mode, define commercial entitlements before live payments, and exercise Snowflake/RouteMind/Langfuse against approved endpoints. Live services were not configured in the development environment. The detailed incremental scope is in `MODULES_GUIDE.md`.
+
 1. OIDC/SSO/MFA, verified emails, recovery, organization membership and role permissions; edge rate limits and abuse prevention.
 2. PostgreSQL RLS and migrations, encrypted object storage, managed secrets, TLS, encryption/backup lifecycle and tested restore/deletion.
 3. Durable ingestion workers and job cancellation/recovery; parsing in resource-isolated sandboxes, malware scanning and security testing. Current indexing is synchronous and can be interrupted.
@@ -26,3 +28,7 @@
 ## Queue/broker decision
 
 Do not deploy both Kafka and RabbitMQ by default. For durable ingestion tasks use a transactional job table or a task queue first. Choose RabbitMQ for delivery/acknowledgment-based worker dispatch; choose Kafka when retained event replay and multiple downstream consumers are required. Define idempotency, tenant isolation, retries and dead-letter behavior before adding either. No broker is installed in this release.
+
+## Billing increment follow-up
+
+Authenticated billing routes, saved-card management, invoice links, configurable monthly/annual checkout and transactional application quotas are now implemented; see STRIPE_BILLING.md. Still required: configure Stripe Test Mode products/keys/portal/webhook destination and run actual hosted checkout, failed-payment/3DS, renewal, upgrade/downgrade and cancellation acceptance flows. No provider test payment was made without credentials. Final pricing/commercial entitlements, token/cost attribution, BYOK storage/accounting, organization billing and production MFA are not complete.

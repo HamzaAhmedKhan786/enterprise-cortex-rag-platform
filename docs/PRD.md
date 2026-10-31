@@ -29,6 +29,10 @@ The original app exposed three unauthenticated Streamlit pages over one PostgreS
 
 ## Acceptance criteria
 
+### Connected module increment
+
+Subscriptions use Stripe-hosted checkout/portal and signed, replay-safe, authoritative-state webhooks. Security now exposes privacy consent, password changes and session revocation. Snowflake supports confirmed, administrator-only import/export with bounded reads and no overwrite/duplicate append. RouteMind plans can be assigned per workspace and polled at 30-second intervals. Carol supplies trusted FAQs and custom evidence/analytics queries. Customer uploads require static inspection plus local ClamAV and produce record-aware or binary-exact parts at the inclusive 10-MiB threshold. SDK installation does not imply provider connectivity; runtime configuration is explicit. Details and limits are in `MODULES_GUIDE.md`.
+
 - A new account sees no other account's data and starts empty.
 - Changing a date/product/customer filter changes metrics, charts and exports consistently.
 - Failed indexing is recorded and never shown as ready.
@@ -49,3 +53,9 @@ RouteMind plans are not carrier tracking. Live shipment GPS/ETA requires an auth
 ## Success measures
 
 Track retrieval hit@5/MRR over reviewed questions, correct abstentions, numeric reconciliation, p95 response latency, failed jobs, dataset freshness and helpfulness feedback. Do not describe one smoke test as a measured quality improvement.
+
+## Stripe billing increment
+
+Implemented: Free/Pro/Team/Enterprise catalog with configurable monthly and annual Stripe Price references; authenticated pricing, billing overview, card-management, invoice and usage routes; a platform billing dashboard with per-account password step-up; backend file/storage/request allowances; signed subscription/invoice lifecycle synchronization and duplicate-checkout protection. Defaults describe application quotas, not approved commercial pricing. Card entry, replacement, billing details, plan changes and cancellations use Stripe-hosted interfaces.
+
+Acceptance: automated lifecycle/authorization tests are separate from hosted provider validation. Stripe Test Mode checkout, portal settings, proration, 3DS, test-clock renewals and actual invoice downloads require the operator to configure test credentials/products/webhook forwarding and execute the guide in STRIPE_BILLING.md. No live payment or organization billing is claimed. Token-cost accounting, BYOK, organization memberships and production MFA remain pending.

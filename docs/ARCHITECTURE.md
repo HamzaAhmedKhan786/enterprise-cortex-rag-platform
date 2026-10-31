@@ -47,8 +47,18 @@ Legacy LangSmith auto-tracing is disabled on the new agent path. No prompt-captu
 
 ## Deployment and future architecture
 
+### Connected module agents
+
+`module_agents.py` supplies SubscriptionAgent, SecurityAgent, MigrationAgent, LogisticsAgent, UploadAgent, CarolAgent and ObservabilityAgent. Each compiles a LangGraph authorization/tool workflow and records only metadata. Webhooks enter a separate narrow FastAPI service at `/webhooks/stripe` and use Stripe signature verification, customer binding, event deduplication and authoritative subscription re-fetching. Migration credentials are operator-scoped and administrator-only. Logistics access is constrained by stored workspace assignments. Uploads scan the complete stream through local ClamD before deep parsing/splitting; unavailable scans fail closed. Carol uses trusted FAQ responses or delegates to the existing evidence/analytics graph. See `MODULES_GUIDE.md` for protocols, readiness and deployment profiles.
+
 Docker serves the workspace on localhost:8502, separate from the local Python server on 8501. Named-volume data persists across restarts. An optional observability profile adds metrics, Prometheus and Grafana. The app runs as a non-root user and the build context excludes environment files and private storage.
 
 For production: TLS reverse proxy, OIDC, organization membership/RBAC, PostgreSQL row-level security, encrypted object storage, network egress policy, private inference, asynchronous ingestion workers, deletion lifecycle and audited migrations. Use RabbitMQ for task dispatch or Kafka for replayable domain event streams only when those requirements exist; neither is required for this bounded release.
 
 Snowflake/dbt remain a separate warehouse path. dbt project configuration and the missing orders model are supplied; Snowflake credentials, staging/loading and cloud execution remain operator work. Existing Kubernetes manifests are legacy templates and are not a deployment definition for this new stateful release.
+
+## Authenticated billing service
+
+`billing_routes.py` extends the existing FastAPI service with server-rendered, responsive billing routes. It shares the owner-scoped SQLite store with Streamlit but issues separate opaque, hashed, HTTP-only cookie sessions. CSRF, origin checks, expiry and password-change revocation apply. Customer ownership is inferred from the session; browsers cannot choose a billing owner. The admin dashboard additionally checks the operator-assigned immutable ID, records the billing role and requires ten-minute password re-verification.
+
+`billing_schema.py` adds safe invoice/card summaries, plan configuration, billing sessions, checkout references and request reservations without replacing existing tables. `billing.py` uses official Stripe SDK calls; only verified signed webhooks grant paid entitlements. Checkout/Portal hold payment details, Stripe re-fetching handles reordered notifications, and event IDs/idempotency keys protect retries. `data.py`, `uploads.py` and `agents.py` enforce allowances in backend transactions. This is single-node SQLite; provider reconciliation serializes writes and is not a distributed billing architecture. See STRIPE_BILLING.md.

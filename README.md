@@ -15,7 +15,15 @@ A local-first workspace for business analytics, document retrieval and auditable
 | Aspirational enterprise feature list | Explicit implemented, optional and pending capabilities |
 | No visible data boundary | Local full-content inference; cloud numeric aggregates only |
 
+## Subscription billing
+
+The Stripe increment adds authenticated billing pages, monthly/annual plan checkout, hosted card management, safe saved-card summaries, invoices/PDF links, usage allowances and an administrator dashboard with password re-verification. Signed webhooks authorize paid allowances; checkout redirects never do. **Stripe keys/products are not configured here; no real test payment has been performed.**
+
+Run the companion service on port 8503 and follow the [Stripe setup and payment verification guide](docs/STRIPE_BILLING.md). It documents exact routes, configuration, database migrations, test coverage and remaining production requirements. No final commercial prices are hardcoded.
+
 ## Workspace capabilities
+
+New modules: **Subscriptions (Stripe)**, **Security**, **Snowflake migration**, **Live logistics**, and **Carol** with FAQs/custom queries. Uploads now require a local ClamAV scan and split files at least 10 MiB into parts up to 9 MiB. Langfuse/DeepEval have separate installation, configuration and runtime controls. See the [module activation guide](docs/MODULES_GUIDE.md) for exact behavior, service requirements and privacy boundaries.
 
 - **Accounts:** salted PBKDF2 passwords, login throttling, expiring sessions and signout. Each account starts empty.
 - **Data studio:** CSV, flat JSON, XLSX, PDF and TXT; bounded parsing, source fingerprints, immutable raw versions, quality profiles, explainable recommendations and optional local AI advice from a bounded sample.
@@ -39,6 +47,8 @@ Fresh workspace screenshots are in [docs/screenshots](docs/screenshots). The cap
 
 ![Evidence-backed copilot](docs/screenshots/08-copilot.png)
 
+![Authenticated billing overview, Free account before Stripe configuration](docs/screenshots/21-billing-overview.png)
+
 ## Quick start
 
 Python 3.12:
@@ -46,7 +56,7 @@ Python 3.12:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements-app.txt
+pip install -r requirements-enterprise.txt
 Copy-Item .env.example .env
 streamlit run app/streamlit_app.py
 ```
@@ -115,6 +125,7 @@ flowchart LR
 - [Product requirements and before/after scope](docs/PRD.md)
 - [Architecture](docs/ARCHITECTURE.md) and [system design](docs/SYSTEM_DESIGN.md)
 - [User/operator guide](docs/USER_GUIDE.md)
+- [New modules, agents and activation guide](docs/MODULES_GUIDE.md)
 - [Privacy policy template](docs/PRIVACY_POLICY.md)
 - [Production backlog](docs/REMAINING_WORK.md) and [validation](docs/VALIDATION.md)
 

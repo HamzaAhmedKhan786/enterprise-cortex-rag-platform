@@ -33,7 +33,7 @@ def error_notice(error):
 
 def authenticate():
     user = st.session_state.get('user')
-    if user and time.time() - user['issued'] < 8 * 3600:
+    if store.session_valid(user):
         return user
     if user:
         st.session_state.clear()
@@ -81,11 +81,12 @@ with st.sidebar:
     st.markdown(LOGO, unsafe_allow_html=True)
     st.caption('INTELLIGENCE, WITH EVIDENCE')
     st.divider()
-    page = st.radio('Workspace', ['Overview', 'Reports', 'Data studio', 'Knowledge', 'AI copilot', 'Operations', 'Integrations', 'Governance'], label_visibility='collapsed')
+    page = st.radio('Workspace', ['Overview', 'Reports', 'Data studio', 'Knowledge', 'AI copilot', 'Subscriptions', 'Security', 'Snowflake migration', 'Live logistics', 'Operations', 'Integrations', 'Governance'], label_visibility='collapsed', key='workspace_page', format_func=lambda name: 'Carol · AI copilot' if name == 'AI copilot' else name)
     st.divider()
-    st.caption('PRIVATE WORKSPACE')
+    st.button('Private workspace', key='private_controls', on_click=lambda: st.session_state.update(workspace_page='Security'), width='stretch')
     st.write('Local data boundary')
-    st.caption('Cloud raw-content egress blocked')
+    st.button('AI data controls', key='cloud_controls', on_click=lambda: st.session_state.update(workspace_page='Security'), width='stretch')
+    st.caption('Raw-content egress stays blocked by policy')
     if st.button('Sign out', icon=':material/logout:', width='stretch'):
         st.session_state.clear()
         st.rerun()
@@ -200,14 +201,20 @@ elif page == 'Data studio':
     with upload:
         left, right = st.columns([1.4, 1])
         with left:
-            file = st.file_uploader('Add a raw data file', type=['csv', 'json', 'xlsx', 'txt', 'pdf'], max_upload_size=10)
+            file = st.file_uploader('Add a raw data file', type=['csv', 'json', 'xlsx', 'txt', 'pdf'], max_upload_size=100, key='raw_upload')
             if file and st.button('Validate and register', type='primary', icon=':material/upload_file:'):
                 try:
-                    data.ingest(owner, file.name, file.getvalue())
+                    from cortex.module_agents import UploadAgent
+                    result = UploadAgent().run(owner, 'scan_and_register', name=file.name, raw=file.getvalue())
+                    st.session_state.upload_archive = {'owner': owner, 'content': result['archive']}
+                    st.json(result['manifest'])
                     st.success('File registered. Review the profile in Dataset registry.')
                 except Exception as error:
                     error_notice(error)
-            st.caption('10 MB · 50,000 rows · 200 PDF pages · OCR is not included')
+            st.caption('Up to 100 MiB · ClamAV required · Files at least 10 MiB split into parts up to 9 MiB · 50,000 rows per table part · 200 PDF pages')
+            archive = st.session_state.get('upload_archive')
+            if archive and archive['owner'] == owner:
+                st.download_button('Download scanned parts and manifest', archive['content'], 'scanned-parts.zip', 'application/zip')
         with right:
             st.subheader('A trustworthy foundation')
             st.write('1. Validate and fingerprint the source\n\n2. Profile the bounded dataset\n\n3. Review the recommendation\n\n4. Choose and build an index\n\n5. Test with your questions')
@@ -285,12 +292,15 @@ elif page == 'Knowledge':
                 except Exception as error:
                     error_notice(error)
 elif page == 'AI copilot':
-    hero('DECISION SUPPORT', 'An assistant with a paper trail.', 'Evidence-only responses, local generation, or bounded cloud explanations. The orchestrator records its stages; tools own the calculations.')
+    hero('CAROL · YOUR AI ASSISTANT', 'Meet Carol. Answers with a paper trail.', 'Evidence-only responses, local generation, or bounded cloud explanations. The orchestrator records its stages; tools own the calculations.')
+    from cortex.carol import FAQ
+    faq = st.selectbox('Common questions for Carol', ['Choose a common question'] + list(FAQ))
+    ask_faq = st.button('Ask Carol', disabled=faq == 'Choose a common question')
     route = st.radio('Assistant focus', ['Documents', 'Analytics'], horizontal=True)
     frame = None
     if route == 'Analytics':
         frame, _ = select_analytics()
-    mode = st.selectbox('Inference boundary', ['Evidence only', 'Local Ollama'] + (['Cloud aggregates'] if route == 'Analytics' else []))
+    mode = st.selectbox('Inference boundary', ['Evidence only', 'Local Ollama'] + (['Cloud aggregates'] if route == 'Analytics' and store.preferences(owner)['cloud_aggregates'] else []))
     st.caption('Cloud AI receives numeric aggregates only, with at least 10 records and 5 customers. Your question, names, addresses, bank details, labels, history and documents remain local.' if mode == 'Cloud aggregates' else 'Local inference can use full relevant evidence and recent workspace conversation history. Evidence-only mode calls no model.')
     for message in reversed(store.history(owner, 'messages', 12)):
         with st.chat_message('user'):
@@ -299,11 +309,13 @@ elif page == 'AI copilot':
             st.write(message['answer'])
             st.caption(f"Run {message['run_id']}")
     question = st.chat_input('Ask about company knowledge or the selected business metrics…', max_chars=2000)
+    if ask_faq:
+        question = faq
     if question:
         try:
-            from cortex.agents import run_agents
+            from cortex.module_agents import CarolAgent
             with st.spinner('Checking privacy → gathering evidence → preparing response…'):
-                result = run_agents(owner, question, route.lower(), mode, frame)
+                result = CarolAgent().run(owner, 'ask', question=question, route='documents' if ask_faq else route.lower(), mode='Evidence only' if ask_faq else mode, frame=frame)
             st.session_state.last_result = {'owner': owner, 'run_id': result['run_id'], 'steps': result['steps'], 'hits': result.get('hits', [])}
             st.rerun()
         except Exception as error:
@@ -334,10 +346,15 @@ elif page == 'Operations':
     events = store.history(owner, 'events')
     if events:
         st.dataframe(pd.DataFrame(events).drop(columns=['owner']), width='stretch', hide_index=True)
-    st.subheader('Component readiness')
-    rows = [{'component': name, 'installed': bool(importlib.util.find_spec(module)), 'role': role} for name, module, role in [('LangGraph','langgraph','Bounded agent workflow'),('LangChain Ollama','langchain_ollama','Local model adapter'),('Langfuse','langfuse','Opt-in metadata-only traces'),('DeepEval','deepeval','Opt-in deterministic evidence evaluation')]]
+    from app.modules_ui import observability_controls
+    observability_controls(owner)
+    st.subheader('Other component readiness')
+    rows = [{'component': name, 'installed': bool(importlib.util.find_spec(module)), 'role': role} for name, module, role in [('LangGraph','langgraph','Bounded agent workflow'),('LangChain Ollama','langchain_ollama','Local model adapter')]]
     st.dataframe(pd.DataFrame(rows), width='stretch', hide_index=True)
     st.caption('Installed does not mean connected. Prometheus and Grafana use the Docker observability profile. Kafka/RabbitMQ are deferred until durable multi-worker ingestion is needed.')
+elif page in {'Subscriptions', 'Security', 'Snowflake migration', 'Live logistics'}:
+    from app.modules_ui import render_module
+    render_module(page, owner)
 elif page == 'Integrations':
     hero('CONNECTED OPERATIONS', 'Bring your systems into view.', 'Read-only adapters for RouteMind and a market-data gateway. Freshness and limitations are explicit; disconnected services never display invented values.')
     st.subheader('RouteMind · Agentic Logistics AI')
@@ -398,4 +415,6 @@ elif page == 'Governance':
     if st.button('Erase workspace content', disabled=confirm != 'ERASE MY WORKSPACE'):
         store.erase_workspace(owner)
         st.session_state.pop('last_result', None)
+        st.session_state.pop('upload_archive', None)
+        st.session_state.pop('raw_upload', None)
         st.success('Workspace content removed from active storage.')

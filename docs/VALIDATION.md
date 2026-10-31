@@ -1,4 +1,24 @@
+# Stripe billing validation · 2026-10-31
+
+- Final clean full regression run: **58 passed**, **82% cortex coverage**, Python 3.12.10 (`pytest tests -q --cov=cortex --cov-report=term-missing --cov-report=xml`). Billing contributes 23 cases; original 35 tests remain passing. XML coverage is generated locally, not committed. The final browser referrer-policy correction was additionally checked with focused login/header tests and a real Chrome sign-in.
+- Billing tests cover monthly/annual checkout requests and open/completed session reuse; real Stripe HMAC verification, bad signatures/test-live mismatch, retryable reconciliation failure, event replay and reversed invoice delivery; active/trialing/past-due/unpaid/canceled/incomplete entitlements; renewal/upgrade/downgrade/cancellation mapping; customer-bound cards/default/removal/hosted portal; invoices/PDF links/cursors; CSRF, origin, login/logout, expiry/password revocation, admin role/step-up/confirmation/audit; configurable limits, price disable and concurrent quota reservations; repeatable migrations and payment references.
+- Stripe API transport is mocked in automated tests. **No real Stripe Checkout payment, card setup, 3DS/decline, portal plan change, test-clock renewal or PDF download was executed.** The user confirmed test credentials/products are not configured. Manual setup/acceptance procedure: [STRIPE_BILLING.md](STRIPE_BILLING.md).
+- Real Chrome billing login returned HTTP 303 with a same-origin form Origin; all five customer billing pages returned HTTP 200, and a 390px mobile pricing view had no horizontal overflow. Screenshot QA found and corrected a no-referrer/Origin:null login rejection; the final same-origin referrer policy retains strict CSRF/origin validation. Local `/pricing` and application health returned HTTP 200. Screenshots show the real empty, unconfigured Free workspace; they do not simulate successful billing. Python compilation and `git diff --check` pass.
+- Token usage/provider cost, BYOK, organization billing, broad RBAC and production MFA are not implemented by this increment. Admin billing uses individual password reauthentication and an operator-assigned existing user ID; no primary administrator is silently created or assigned by email.
+
+## Previous connected-module validation
+
 # Validation record — workspace release
+
+## Connected modules — 31 October 2026
+
+- Previous complete suite: **35 passed**, **79% cortex coverage**, Python 3.12.10. Includes subscription SDK contracts, real Stripe HMAC signature rejection/replay tests, authoritative status mapping, password/session revocation, static-content rejection, exact size boundaries/UTF-8/CSV splitting, atomic registration, scanner-unavailable rejection, admin/identifier/confirmation gates, mocked Snowflake import/export and idempotent export retry, workspace logistics assignments, named module agents, actual DeepEval, and UI navigation/privacy consent/admin views. Provider SDK calls are mocked; no payment or warehouse movement occurred.
+- Installed and dependency-checked Langfuse 3.15.0, DeepEval 3.9.9, Stripe 14.4.2, Snowflake Connector 4.8.1 and FastAPI 0.162.0. `pip check` reports no broken requirements. The real local DeepEval example returned score 1.0 and passed; no cloud judge was used.
+- Updated browser walkthrough completed with synthetic data and refreshed screenshots, including Carol, Subscriptions, Security, Snowflake access, logistics access, and SDK controls. The original two user-supplied README images remain unchanged. No customer records or credentials appear in captures.
+- Workspace health returned HTTP 200 on port 8501. The local webhook API returned `ok` on port 8503. Its `.env` loading uses the same project configuration as Streamlit.
+- Stripe keys/price IDs, Snowflake credentials, Langfuse project keys, administrator ID and RouteMind URL were not configured on this host. RouteMind at localhost:8000 was unreachable. These are configuration requirements, not claimed live connections.
+- ClamAV Compose configuration validates, but its container startup stalled and no scanner container became available; the attempt was stopped without restarting Docker Desktop or unrelated services. **Real antivirus scanning is not runtime-verified. Customer uploads remain blocked until local ClamAV returns a successful scan.** Tests verify the fail-closed behavior and use a mocked clean verdict only for registration/manifest contracts.
+- Earlier sandbox test runs hung in the async HTTP test client; the isolated host HTTP test passed, and the final complete host suite passed. No sandbox-hung run is counted as a pass.
 
 ## Executed successfully
 

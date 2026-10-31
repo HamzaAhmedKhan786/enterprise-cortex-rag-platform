@@ -1,5 +1,9 @@
 # System design
 
+## Connected-module extension
+
+See `MODULES_GUIDE.md` for implemented protocols and deployment. Stripe uses a separately hosted signed-event receiver and server-owned customer bindings; redirects never grant subscription status. Snowflake migration is confirmed/admin-only, bounded and non-overwriting, with persisted job outcomes and no repeat append after completion. RouteMind snapshots require workspace assignments and report freshness independently of upstream simulation. All modules use account-gated LangGraph tool agents; Carol alone delegates language interpretation. The upload gate scans the complete stream using local ClamAV before format parsing/splitting, rejects active-content patterns, and registers all source parts transactionally. New tables hold privacy consent, billing references/event IDs, migration metadata and assigned logistics snapshots. Password changes timestamp-revoke older sessions on their next request. Billing records remain separate from workspace-content erasure. All keys remain server configuration, not LLM context or browser-editable credentials.
+
 ## Data contracts
 
 Tables require `date, product, customer_id, revenue`. Optional analytics fields: `cost, quantity, unit_price, category, region, status, delivery_days, promised_days`. Each row is one record, not necessarily one order. Values must use one currency (EUR in this UI). Uploads are retained intact locally, but only approved analytics columns appear in charts/exports. Unknown columns never enter AI through the analytics route.
@@ -47,3 +51,11 @@ Market gateway: `GET /snapshot → {as_of: timezone-aware ISO8601, indicators: [
 ## Verification
 
 Tests cover auth/lockout, tenant isolation, index deletion/failure, deduplication, filters/date boundaries, cloud egress, local endpoint policy, formula escaping and actual LangGraph persistence. UI smoke tests use Streamlit AppTest; browser captures verify actual rendered layouts when host permissions allow. External integrations are contract-tested with mocks unless credentials/endpoints are configured. Never describe unexecuted Docker/cloud/index paths as validated.
+
+## Subscription lifecycle and quota consistency
+
+Flow: workspace login → separate billing session → configured Price selection → reusable Stripe Checkout → signed webhook → latest Stripe subscription/invoice fetch → atomic event deduplication + billing-state persistence → paid allowance until period end. A checkout-return query never changes entitlement. Refresh may update status or revoke verification but cannot elevate access. Delayed/reversed events read current Stripe state; reconciliation failures return 503 for retry. Current subscription defaults and customer invoice defaults are updated together when selecting a card; deletion is guarded.
+
+Real routes: /pricing, /workspace/settings/billing, /workspace/settings/billing/payment-methods, /workspace/settings/billing/invoices, /workspace/settings/billing/usage and /admin/billing. Billing records remain account-scoped. Admin actions require role assignment, session step-up, CSRF, confirmation and audit metadata. Invoice pagination validates ownership of cursors; payment/invoice links allow only HTTPS Stripe domains.
+
+Custom AI requests reserve one UTC calendar-month allowance atomically before execution, including failed attempts; FAQ and billing tools are excluded. File/storage limits apply to both internal ingestion and scanned upload batches. Tokens/cost are unknown, not estimated or invoiced. Additive schema migration is repeatable and preserves original accounts/data. No provider keys are persisted in the application database.

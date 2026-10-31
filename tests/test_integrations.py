@@ -59,6 +59,7 @@ def test_cloud_request_contains_no_question_or_identifiers(tmp_path, monkeypatch
     monkeypatch.setenv("GROQ_API_KEY", "test-key-not-real")
     store.initialize()
     user = store.signup("private@example.test", "a-long-cloud-test-password")
+    store.set_preferences(user["id"], True)
     frame = pd.DataFrame([{"date": pd.Timestamp("2026-10-01"), "revenue": 10, "product": "Confidential Product", "customer_id": f"Private-{i % 5}"} for i in range(20)])
     recorded = []
     class CloudResponse:
