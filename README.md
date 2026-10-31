@@ -33,6 +33,10 @@ Fresh workspace screenshots are in [docs/screenshots](docs/screenshots). The cap
 
 ![Cortex overview](docs/screenshots/02-overview.png)
 
+![Purchasing patterns, operational distribution, unit economics and regional performance](docs/screenshots/13-analytics-performance.png)
+
+![Decision brief with deterministic signals and evidence](docs/screenshots/14-decision-brief.png)
+
 ![Evidence-backed copilot](docs/screenshots/08-copilot.png)
 
 ## Quick start
