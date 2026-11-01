@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 load_dotenv(ROOT / '.env')
-from cortex import data, store
+from cortex import data, store, identity
 from cortex.retrieval import STRATEGIES, build_index, evaluate_retrieval, search
 
 st.set_page_config(page_title='Cortex · Intelligence workspace', page_icon=':material/hub:', layout='wide')
@@ -43,7 +43,7 @@ def authenticate():
         st.caption('YOUR DATA. CLEARER DECISIONS.')
         st.title('Your intelligence workspace')
         st.write('Connect business records and company knowledge. Make decisions with traceable numbers and evidence.')
-        signin, signup = st.tabs(['Sign in', 'Create account'])
+        signin, signup, recovery = st.tabs(['Sign in', 'Create account', 'Forgot password'])
         with signin:
             with st.form('signin'):
                 email = st.text_input('Email')
@@ -70,9 +70,22 @@ def authenticate():
                     st.rerun()
                 except Exception as error:
                     error_notice(error)
+        with recovery:
+            st.write('Password recovery uses a verified, single-use email link.')
+            with st.form('forgot_password'):
+                recovery_email=st.text_input('Recovery email')
+                recovery_submit=st.form_submit_button('Send password reset link',disabled=not identity.email_ready())
+            if not identity.email_ready():
+                st.info('Email delivery is not configured. Ask your operator to configure SMTP.')
+            if recovery_submit:
+                try:
+                    identity.request_email('reset',email=recovery_email)
+                    st.success('If an eligible account exists, a reset link will be delivered. Check your inbox or contact the operator.')
+                except Exception as error:
+                    error_notice(error)
         with st.expander('Privacy notice'):
             st.write('Files and chat history are stored on this server, isolated by account. Local inference may process full relevant content. Cloud AI is optional and accepts only approved numeric aggregates. Names, addresses, bank details, questions and raw documents do not go to cloud AI. Administrators control storage and backups.')
-            st.caption('Single-node release: no email verification, password recovery, SSO or MFA yet. Read docs/PRIVACY_POLICY.md before deployment.')
+            st.caption('Verified email actions require SMTP. SSO and MFA are not implemented. Read docs/PRIVACY_POLICY.md before deployment.')
     st.stop()
 
 user = authenticate()
@@ -81,7 +94,17 @@ with st.sidebar:
     st.markdown(LOGO, unsafe_allow_html=True)
     st.caption('INTELLIGENCE, WITH EVIDENCE')
     st.divider()
-    page = st.radio('Workspace', ['Overview', 'Reports', 'Data studio', 'Knowledge', 'AI copilot', 'Subscriptions', 'Security', 'Snowflake migration', 'Live logistics', 'Operations', 'Integrations', 'Governance'], label_visibility='collapsed', key='workspace_page', format_func=lambda name: 'Carol · AI copilot' if name == 'AI copilot' else name)
+    pages=['Overview','Reports','Data studio','Knowledge','AI copilot','My Profile','Account Settings','Organization','Team Members','Subscriptions','Security','Snowflake migration','Live logistics','Operations','Integrations','Governance']
+    if identity.platform_role(owner) in identity.PLATFORM_ROLES:
+        pages.append('Admin Dashboard')
+    requested=st.query_params.get('section')
+    if requested in pages and requested!=st.session_state.get('_last_section'):
+        st.session_state.workspace_page=requested
+    if st.session_state.get('workspace_page') not in pages:
+        st.session_state.workspace_page='Overview'
+    page=st.radio('Workspace',pages,label_visibility='collapsed',key='workspace_page',format_func=lambda name:'Carol · AI copilot' if name=='AI copilot' else name)
+    st.query_params['section']=page
+    st.session_state._last_section=page
     st.divider()
     st.button('Private workspace', key='private_controls', on_click=lambda: st.session_state.update(workspace_page='Security'), width='stretch')
     st.write('Local data boundary')
@@ -122,7 +145,17 @@ def select_analytics():
 def chart(value, key):
     st.altair_chart(value.configure_view(strokeWidth=0).configure_axis(labelColor='#6b818a', titleColor='#48616a', gridColor='#e6edef').configure_legend(labelColor='#48616a'), width='stretch', key=key)
 
-if page in {'Overview', 'Reports'}:
+if page in {'My Profile','Account Settings','Organization','Team Members','Admin Dashboard'}:
+    from app.accounts_ui import profile_page,settings_page,organization_page,admin_page
+    if page=='My Profile':
+        profile_page(owner)
+    elif page=='Account Settings':
+        settings_page(owner)
+    elif page=='Admin Dashboard':
+        admin_page(owner)
+    else:
+        organization_page(owner,team_focus=page=='Team Members')
+elif page in {'Overview', 'Reports'}:
     hero('BUSINESS INTELLIGENCE', 'A clearer view of your business.', 'Understand performance, investigate the signals, and act on traceable evidence. Every number follows your selected dataset and filters.')
     frame, selected = select_analytics()
     m = data.metrics(frame)
@@ -410,7 +443,7 @@ elif page == 'Governance':
     st.divider()
     st.caption(f'Your immutable account ID: {owner}')
     st.subheader('Workspace retention')
-    st.caption('Erasure removes active records, chunks, chats, feedback and audit data. Backups, SQLite free pages and external provider records require separate operator handling. Your login account remains.')
+    st.caption('Erasure removes private records, chunks, chats, feedback and audit data. Shared organization datasets/conversations, your account and billing records remain. Backups, SQLite free pages and provider records require separate operator handling.')
     confirm = st.text_input('Type ERASE MY WORKSPACE to remove your data')
     if st.button('Erase workspace content', disabled=confirm != 'ERASE MY WORKSPACE'):
         store.erase_workspace(owner)

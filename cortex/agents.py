@@ -17,6 +17,7 @@ from cortex.retrieval import extractive_answer, search
 
 class AgentState(TypedDict, total=False):
     owner: str
+    organization: str
     question: str
     mode: str
     route: str
@@ -61,7 +62,7 @@ def analytics_agent(state):
 
 
 def retrieval_agent(state):
-    hits = search(state["owner"], state["question"], state.get("dataset_id"))
+    hits = search(state["owner"], state["question"], state.get("dataset_id"), organization=state.get("organization"))
     return {"hits": hits, **_step(state, "Evidence retrieval", f"Retrieved {len(hits)} workspace chunks")}
 
 
@@ -148,26 +149,29 @@ def emit_trace(run_id, route, duration, status):
         pass
 
 
-def run_agents(owner, question, route="documents", mode="Evidence only", frame=None, dataset_id=None):
+def run_agents(owner, question, route="documents", mode="Evidence only", frame=None, dataset_id=None, organization=None):
     from cortex import billing
+    if organization:
+        from cortex.organizations import require
+        require(owner, organization)
     reservation = billing.reserve_request(owner)
     started, run_id = time.perf_counter(), secrets.token_hex(12)
     # History remains workspace-local and is never passed to cloud explanations.
-    history = [{"question": m["question"], "answer": m["answer"]} for m in reversed(store.history(owner, "messages", 4))]
+    history = [{"question": m["question"], "answer": m["answer"]} for m in reversed(store.history(owner, "messages", 4, organization))]
     try:
         result = build_graph().invoke({"owner": owner, "question": question, "route": route, "mode": mode, "frame": frame, "dataset_id": dataset_id,
-                                      "history": history, "steps": [], "run_id": run_id}, config={"recursion_limit": 8})
+                                      "organization": organization, "history": history, "steps": [], "run_id": run_id}, config={"recursion_limit": 8})
         duration = time.perf_counter() - started
         status = "degraded" if result.get("degraded") else "completed"
-        store.save_run(owner, run_id, route, status, duration, result["steps"])
+        store.save_run(owner, run_id, route, status, duration, result["steps"], organization)
         sources = [{"source": h["source"], "citation": h["citation"]} for h in result.get("hits", [])]
-        store.save_message(owner, question, result["answer"], sources, run_id)
+        store.save_message(owner, question, result["answer"], sources, run_id, organization)
         emit_trace(run_id, route, duration, status)
         billing.finish_request(owner, reservation)
         return result
     except Exception:
         billing.finish_request(owner, reservation, failed=True)
         duration = time.perf_counter() - started
-        store.save_run(owner, run_id, route, "failed", duration, [{"agent": "workflow", "status": "failed", "detail": "Request failed; no raw error or input exported"}])
+        store.save_run(owner, run_id, route, "failed", duration, [{"agent": "workflow", "status": "failed", "detail": "Request failed; no raw error or input exported"}], organization)
         emit_trace(run_id, route, duration, "failed")
         raise

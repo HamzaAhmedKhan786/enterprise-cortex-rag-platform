@@ -84,6 +84,8 @@ def initialize():
             db.execute("ALTER TABLE users ADD COLUMN password_changed REAL NOT NULL DEFAULT 0")
     from cortex.billing_schema import migrate
     migrate()
+    from cortex.identity_schema import migrate as migrate_identity
+    migrate_identity()
 
 
 def _email(value):
@@ -101,10 +103,12 @@ def signup(email, password):
     email = _email(email)
     if not 12 <= len(password) <= 256:
         raise ValueError("Use a password with 12–256 characters.")
+    from argon2 import PasswordHasher
+    password_digest = PasswordHasher().hash(password)
     uid, salt = secrets.token_hex(16), secrets.token_hex(16)
     try:
         with connection() as db:
-            db.execute("INSERT INTO users(id,email,salt,password_hash,created) VALUES (?,?,?,?,?)", (uid, email, salt, _hash(password, salt), time.time()))
+            db.execute("INSERT INTO users(id,email,salt,password_hash,created,argon2_hash) VALUES (?,?,?,?,?,?)", (uid, email, salt, "argon2", time.time(), password_digest))
     except sqlite3.IntegrityError:
         raise ValueError("Unable to create account. Try signing in or use another address.") from None
     return {"id": uid, "email": email, "issued": time.time()}
@@ -121,12 +125,25 @@ def login(email, password):
             raise ValueError("Too many attempts. Try again in 15 minutes.")
         row = db.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
         salt = row["salt"] if row else "00" * 16
-        computed = _hash(password, salt)
-        valid = row is not None and hmac.compare_digest(computed, row["password_hash"])
+        if row and row['argon2_hash']:
+            from argon2 import PasswordHasher
+            from argon2.exceptions import VerificationError, InvalidHashError
+            try:
+                valid = PasswordHasher().verify(row['argon2_hash'], password)
+            except (VerificationError, InvalidHashError):
+                valid = False
+        else:
+            computed = _hash(password, salt)
+            valid = row is not None and hmac.compare_digest(computed, row["password_hash"])
+        valid = valid and row['status'] == 'active'
         if not valid:
             db.execute("INSERT INTO attempts VALUES (?,?)", (email, now))
         else:
             db.execute("DELETE FROM attempts WHERE email=?", (email,))
+            db.execute('UPDATE users SET last_login=? WHERE id=?',(now,row['id']))
+            if not row['argon2_hash']:
+                from argon2 import PasswordHasher
+                db.execute("UPDATE users SET argon2_hash=?,password_hash='argon2' WHERE id=?",(PasswordHasher().hash(password),row['id']))
     if not valid:
         raise ValueError("Invalid email or password.")
     return {"id": row["id"], "email": email, "issued": now}
@@ -139,60 +156,102 @@ def audit(owner, action, target="", detail=None):
                    (owner, action, target, json.dumps(detail or {}), time.time()))
 
 
-def datasets(owner):
-    with connection() as db:
-        rows = db.execute("SELECT id,name,kind,profile,strategy,status,error,created FROM datasets WHERE owner=? ORDER BY created DESC", (owner,)).fetchall()
-    return [dict(r) | {"profile": json.loads(r["profile"])} for r in rows]
+def dataset_scope(owner, organization=None, alias='', db=None):
+    from cortex import identity, organizations
+    if alias not in {'','d.'}:
+        raise ValueError('Invalid dataset scope.')
+    identity.active(owner, db)
+    if organization:
+        organizations.require(owner, organization, db=db)
+        return alias+'id IN (SELECT dataset FROM organization_datasets WHERE organization=?)', [organization]
+    return alias+'owner=? AND '+alias+'id NOT IN (SELECT dataset FROM organization_datasets)', [owner]
 
 
-def dataset(owner, dataset_id):
+def datasets(owner, organization=None):
     with connection() as db:
-        row = db.execute("SELECT * FROM datasets WHERE owner=? AND id=?", (owner, dataset_id)).fetchone()
+        clause,args=dataset_scope(owner,organization,db=db)
+        rows=db.execute('SELECT id,name,kind,profile,strategy,status,error,created FROM datasets WHERE '+clause+' ORDER BY created DESC',args).fetchall()
+    return [dict(r)|{'profile':json.loads(r['profile'])} for r in rows]
+
+
+def dataset(owner, dataset_id, organization=None):
+    with connection() as db:
+        clause,args=dataset_scope(owner,organization,db=db)
+        row=db.execute('SELECT * FROM datasets WHERE '+clause+' AND id=?',args+[dataset_id]).fetchone()
     if row is None:
-        raise ValueError("Dataset is unavailable in this workspace.")
-    result = dict(row)
-    for field in ("payload", "profile"):
-        result[field] = json.loads(result[field])
+        raise ValueError('Dataset is unavailable in this workspace.')
+    result=dict(row)
+    for field in ('payload','profile'):
+        result[field]=json.loads(result[field])
     return result
 
 
-def delete_dataset(owner, dataset_id):
+def delete_dataset(owner, dataset_id, organization=None):
     with connection() as db:
-        db.execute("DELETE FROM datasets WHERE owner=? AND id=?", (owner, dataset_id))
-    audit(owner, "dataset_deleted", dataset_id)
+        db.execute('BEGIN IMMEDIATE')
+        clause,args=dataset_scope(owner,organization,db=db)
+        if organization:
+            from cortex.organizations import require
+            require(owner,organization,manage=True,db=db)
+        db.execute('DELETE FROM datasets WHERE '+clause+' AND id=?',args+[dataset_id])
+    audit(owner,'dataset_deleted',dataset_id)
 
 
-def history(owner, table, limit=100):
-    if table not in {"events", "runs", "messages"}:
-        raise ValueError("Unsupported history type.")
+def history(owner, table, limit=100, organization=None):
+    from cortex import identity, organizations
+    identity.active(owner)
+    if table not in {'events','runs','messages'}:
+        raise ValueError('Unsupported history type.')
+    if organization:
+        organizations.require(owner,organization)
+    clause=' AND organization=?' if table!='events' else ''
+    args=[owner]+([organization or ''] if clause else [])+[max(1,min(int(limit),1000))]
     with connection() as db:
-        return [dict(r) for r in db.execute(f"SELECT * FROM {table} WHERE owner=? ORDER BY created DESC LIMIT ?", (owner, limit)).fetchall()]
+        return [dict(r) for r in db.execute(f'SELECT * FROM {table} WHERE owner=?'+clause+' ORDER BY created DESC LIMIT ?',args)]
 
 
-def save_run(owner, run_id, route, status, duration, steps):
+def save_run(owner, run_id, route, status, duration, steps, organization=None):
+    from cortex import identity, organizations
     with connection() as db:
-        db.execute("INSERT INTO runs VALUES(?,?,?,?,?,?,?)", (run_id, owner, route, status, duration, json.dumps(steps), time.time()))
+        identity.active(owner,db)
+        if organization:
+            organizations.require(owner,organization,db=db)
+        db.execute('INSERT INTO runs(id,owner,route,status,duration,steps,created,organization) VALUES(?,?,?,?,?,?,?,?)',
+                   (run_id,owner,route,status,duration,json.dumps(steps),time.time(),organization or ''))
 
 
-def save_message(owner, question, answer, sources, run_id):
+def save_message(owner, question, answer, sources, run_id, organization=None):
+    from cortex import identity, organizations
     with connection() as db:
-        db.execute("INSERT INTO messages(owner,question,answer,sources,run_id,created) VALUES(?,?,?,?,?,?)",
-                   (owner, question, answer, json.dumps(sources), run_id, time.time()))
+        identity.active(owner,db)
+        if organization:
+            organizations.require(owner,organization,db=db)
+        db.execute('INSERT INTO messages(owner,question,answer,sources,run_id,created,organization) VALUES(?,?,?,?,?,?,?)',
+                   (owner,question,answer,json.dumps(sources),run_id,time.time(),organization or ''))
 
 
 def feedback(owner, run_id, rating):
-    if rating not in {"Helpful", "Needs improvement"}:
-        raise ValueError("Invalid rating.")
+    if rating not in {'Helpful','Needs improvement'}:
+        raise ValueError('Invalid rating.')
     with connection() as db:
-        if not db.execute("SELECT 1 FROM runs WHERE owner=? AND id=?", (owner, run_id)).fetchone():
-            raise ValueError("Run is unavailable.")
-        db.execute("INSERT OR REPLACE INTO feedback VALUES(?,?,?,?)", (owner, run_id, rating, time.time()))
+        row=db.execute('SELECT organization FROM runs WHERE owner=? AND id=?',(owner,run_id)).fetchone()
+        if not row:
+            raise ValueError('Run is unavailable.')
+        if row[0]:
+            from cortex.organizations import require
+            require(owner,row[0],db=db)
+        db.execute('INSERT OR REPLACE INTO feedback VALUES(?,?,?,?)',(owner,run_id,rating,time.time()))
 
 
 def erase_workspace(owner):
+    from cortex.identity import active
     with connection() as db:
-        for table in ("feedback", "messages", "runs", "events", "datasets", "migrations", "logistics_links"):
-            db.execute(f"DELETE FROM {table} WHERE owner=?", (owner,))
+        active(owner,db)
+        for table in ('messages','runs'):
+            db.execute(f"DELETE FROM {table} WHERE owner=? AND organization=''",(owner,))
+        for table in ('feedback','events','migrations','logistics_links'):
+            db.execute(f'DELETE FROM {table} WHERE owner=?',(owner,))
+        db.execute('DELETE FROM datasets WHERE owner=? AND id NOT IN (SELECT dataset FROM organization_datasets)',(owner,))
 
 
 def preferences(owner):
@@ -211,8 +270,8 @@ def session_valid(user):
     if not user or time.time() - user.get("issued", 0) >= 8 * 3600:
         return False
     with connection() as db:
-        row = db.execute("SELECT password_changed FROM users WHERE id=?", (user.get("id", ""),)).fetchone()
-    return row is not None and user["issued"] >= row[0]
+        row = db.execute("SELECT password_changed,sessions_revoked,status FROM users WHERE id=?", (user.get("id", ""),)).fetchone()
+    return row is not None and row["status"] == "active" and user["issued"] >= max(row["password_changed"],row["sessions_revoked"])
 
 
 def change_password(owner, current_password, new_password):
@@ -223,9 +282,14 @@ def change_password(owner, current_password, new_password):
     if row is None:
         raise ValueError("Account not found.")
     login(row[0], current_password)
+    from argon2 import PasswordHasher
+    password_digest = PasswordHasher().hash(new_password)
     salt = secrets.token_hex(16)
     changed = time.time()
     with connection() as db:
-        db.execute("UPDATE users SET salt=?,password_hash=?,password_changed=? WHERE id=?", (salt, _hash(new_password, salt), changed, owner))
+        db.execute("UPDATE users SET salt=?,password_hash='argon2',argon2_hash=?,password_changed=? WHERE id=?", (salt, password_digest, changed, owner))
+    with connection() as db:
+        db.execute('DELETE FROM email_tokens WHERE owner=?',(owner,))
+        db.execute('DELETE FROM auth_bridges WHERE owner=?',(owner,))
     audit(owner, "password_changed")
     return changed

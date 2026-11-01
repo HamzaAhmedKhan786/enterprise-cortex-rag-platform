@@ -17,15 +17,21 @@ A local-first workspace for business analytics, document retrieval and auditable
 
 ## Subscription billing
 
-The Stripe increment adds authenticated billing pages, monthly/annual plan checkout, hosted card management, safe saved-card summaries, invoices/PDF links, usage allowances and an administrator dashboard with password re-verification. Signed webhooks authorize paid allowances; checkout redirects never do. **Stripe keys/products are not configured here; no real test payment has been performed.**
+The Stripe increment adds authenticated billing pages, monthly/annual plan checkout, hosted card management, safe saved-card summaries, invoices/PDF links, usage allowances and an administrator dashboard with individual Super Admin accounts and password re-verification. Signed webhooks authorize paid allowances; checkout redirects never do. **Stripe Test Mode credentials and all six recurring prices are verified; the Cortex test portal is configured. No completed payment/renewal is claimed.**
 
 Run the companion service on port 8503 and follow the [Stripe setup and payment verification guide](docs/STRIPE_BILLING.md). It documents exact routes, configuration, database migrations, test coverage and remaining production requirements. No final commercial prices are hardcoded.
+
+## Profiles, administration and organizations
+
+**My Profile**, **Account Settings**, **Organization**, **Team Members** and the authorized **Admin Dashboard** are available in the sidebar. Existing passwords continue working and upgrade to Argon2 after sign-in. The configured immutable primary-admin ID grants access to a real searchable user directory after password re-verification. Platform and organization roles are separate; explicit organization sharing scopes files, retrieval, reports and conversation history.
+
+Workspace links transfer the verified identity to the companion service using short-lived, one-use tickets. Email verification, email changes, recovery and invitations require SMTP. See the [account/admin setup guide](docs/ACCOUNTS_ADMIN_GUIDE.md) for exact URLs, role permissions, environment variables, migrations, deletion retention and the PostgreSQL production path.
 
 ## Workspace capabilities
 
 New modules: **Subscriptions (Stripe)**, **Security**, **Snowflake migration**, **Live logistics**, and **Carol** with FAQs/custom queries. Uploads now require a local ClamAV scan and split files at least 10 MiB into parts up to 9 MiB. Langfuse/DeepEval have separate installation, configuration and runtime controls. See the [module activation guide](docs/MODULES_GUIDE.md) for exact behavior, service requirements and privacy boundaries.
 
-- **Accounts:** salted PBKDF2 passwords, login throttling, expiring sessions and signout. Each account starts empty.
+- **Accounts:** Argon2id passwords with legacy PBKDF2 upgrades, profiles, throttling, expiring/revocable sessions, verified email actions (SMTP required), administrator user management and scoped organizations/teams. Each real account starts empty.
 - **Data studio:** CSV, flat JSON, XLSX, PDF and TXT; bounded parsing, source fingerprints, immutable raw versions, quality profiles, explainable recommendations and optional local AI advice from a bounded sample.
 - **Analytics:** revenue trend, product contribution, revenue mix, customer concentration, weekly heatmap, operational distribution, contribution economics and regional performance. All use the same selected date/product/customer filters.
 - **Reports:** grouped and underlying tables, CSV exports with spreadsheet formula escaping. Required schema: `date,product,customer_id,revenue`; single currency EUR.
@@ -48,6 +54,10 @@ Fresh workspace screenshots are in [docs/screenshots](docs/screenshots). The cap
 ![Evidence-backed copilot](docs/screenshots/08-copilot.png)
 
 ![Authenticated billing overview, Free account before Stripe configuration](docs/screenshots/21-billing-overview.png)
+
+![My Profile, shown with an isolated QA account](docs/screenshots/26-my-profile.png)
+
+![Administrator directory, isolated QA database](docs/screenshots/28-admin-user-directory.png)
 
 ## Quick start
 

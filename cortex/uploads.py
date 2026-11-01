@@ -97,6 +97,8 @@ def secure_ingest(owner, name, raw):
     ids = []
     with store.connection() as db:
         db.execute("BEGIN IMMEDIATE")
+        from cortex.identity import active
+        active(owner, db)
         pending, seen = [], {}
         for filename, content, kind, payload in parsed:
             digest = hashlib.sha256(content).hexdigest()
@@ -105,6 +107,8 @@ def secure_ingest(owner, name, raw):
                 continue
             existing = db.execute("SELECT id FROM datasets WHERE owner=? AND digest=?", (owner, digest)).fetchone()
             if existing:
+                if db.execute('SELECT 1 FROM organization_datasets WHERE dataset=?',(existing[0],)).fetchone():
+                    raise ValueError('This content already belongs to an organization; use that organization workspace.')
                 ids.append(existing[0])
                 seen[digest] = existing[0]
             else:

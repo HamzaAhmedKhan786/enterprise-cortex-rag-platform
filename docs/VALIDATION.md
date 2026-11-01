@@ -1,3 +1,25 @@
+# Stripe access and configuration repair
+
+- Full combined suite: **80 passed**, **82% cortex coverage**, followed by **47 account/billing tests passed** after the final probe and step-up hardening (83 unique test cases in total). Added regressions cover multiple named Super Admins, immediate financial-access revocation, shared recent verification, preserved allowlisted login destinations, confirmed owner-scoped checkout expiry and test-only portal configuration.
+- Live read-only Stripe **Test Mode** checks confirmed all six configured prices active, unique, EUR, and correctly monthly/yearly. The previous default portal had subscription changes disabled. A separate Cortex test portal was created with all six prices and the required features; no default portal, payment, invoice amount or customer payment method was changed.
+- One linked customer had an open Checkout and no subscription. The Free plan was therefore expected. No successful payment/renewal is claimed.
+- Local CLI startup failed because the installed version requires explicit events. The helper now supplies them and privately synchronizes the signing secret. WebSocket timeouts are reported as connection warnings rather than hidden. Test Mode setup and key handling are documented in STRIPE_BILLING.md.
+- Billing now checks persistent Super Admin role plus recent password verification at both route and domain layers. The old single-operator billing check was an application limitation, not a bad Stripe key. Shared passwords are not introduced. Platform Admin does not receive financial write access.
+- A genuine Test Mode portal metadata event was emitted by Stripe, forwarded by the CLI, signature-verified and recorded by the local API; the marker was restored. No payment was created. Additional probe safety tests cover metadata restoration and rejection of live/unowned configurations. Older-session step-up handling was checked separately. Concurrent revocation cannot mint a fresh admin proof, and an authorized administrator can stop renewal for a suspended customer without reopening that customer’s login.
+- New browser screenshots `35`–`37` use isolated local accounts and validate tester promotion/login, Stripe configuration display, available pricing, and revocation. No production account is impersonated. Actual payment/3DS/renewal acceptance remains outstanding.
+
+## Previous account increment validation
+
+# Account and organization validation · 2026-11-01
+
+- Final full regression: **76 passed**, **82% cortex coverage**, Python 3.12.10. Existing billing tests remain passing. A subsequent focused delegated-admin HTTP check passed after navigation/403 refinements. Commands: `python -m pytest tests -q --cov=cortex --cov-report=term-missing --cov-report=xml` and the targeted account-scope regression.
+- Covered: existing-account migration and PBKDF2-to-Argon2 upgrades; registration/login/profile persistence; reset/change/verify email tokens, expiry/replay and throttling; SMTP certificate validation with mocked transport; primary-ID bootstrap; platform role/status/session changes, protected primary/last Super Admin; step-up expiry; private/organization dataset/index/report/chat isolation; viewer restrictions, last-owner/team membership safeguards; one-use handoff, destination allowlisting and revocation races; deletion, pending-checkout/subscription guards; native profile/admin/organization/team navigation.
+- Chrome exercised the actual sign-in forms, profile save/persistence, identity handoff into the companion service, administrator password verification, user-directory/user-detail routes, page refresh/navigation and a 390px mobile profile without horizontal overflow. Screenshots `26`–`34` use an isolated QA database; real registered users and customer files were not copied or impersonated.
+- Compilation, `git diff --check`, JavaScript syntax checks and `pip check` pass. No actual SMTP emails, Stripe payments, warehouse transfers or live logistics calls were made. Email tests use mocked transport; SMTP is unconfigured on this host. The existing configured primary administrator ID is preserved.
+- Remaining: production MFA/SSO, PostgreSQL RLS/distributed deployment, operational email delivery, global abuse controls, encrypted backups/storage, per-team content ACLs, pooled organization billing and provider/backup deletion handling. Full behavior/configuration: [ACCOUNTS_ADMIN_GUIDE.md](ACCOUNTS_ADMIN_GUIDE.md).
+
+## Previous billing release validation
+
 # Stripe billing validation · 2026-10-31
 
 - Final clean full regression run: **58 passed**, **82% cortex coverage**, Python 3.12.10 (`pytest tests -q --cov=cortex --cov-report=term-missing --cov-report=xml`). Billing contributes 23 cases; original 35 tests remain passing. XML coverage is generated locally, not committed. The final browser referrer-policy correction was additionally checked with focused login/header tests and a real Chrome sign-in.

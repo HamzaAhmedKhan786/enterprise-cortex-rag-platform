@@ -7,7 +7,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from cortex import billing, store
+from cortex import billing, store, identity
 from cortex.api import app
 from cortex.billing_routes import COOKIE, issue_session
 
@@ -15,6 +15,9 @@ from cortex.billing_routes import COOKIE, issue_session
 @pytest.fixture
 def workspace(tmp_path, monkeypatch):
     monkeypatch.setenv('CORTEX_DB', str(tmp_path / 'billing.sqlite3'))
+    for name in billing.PLAN_NAMES:
+        for suffix in ('','_MONTHLY','_ANNUAL'):
+            monkeypatch.delenv('STRIPE_PRICE_'+name.upper()+suffix,raising=False)
     monkeypatch.setenv('STRIPE_SECRET_KEY','sk_test_contract_not_a_real_key')
     monkeypatch.setenv('STRIPE_WEBHOOK_SECRET','whsec_contract_not_a_real_secret')
     monkeypatch.setenv('STRIPE_PRICE_PRO_MONTHLY','price_promonth')
@@ -185,6 +188,8 @@ def test_auth_csrf_admin_stepup_and_password_revocation(workspace,monkeypatch):
     assert client.get('/admin/billing').status_code==403
     assert client.post('/admin/billing/verify',data={'csrf':csrf,'password':'billing-test-password-123'}).status_code==403
     monkeypatch.setenv('CORTEX_ADMIN_USER_ID',workspace)
+    with store.connection() as db:
+        db.execute("UPDATE billing_sessions SET verified=?,admin_proof='' WHERE owner=?",(time.time(),workspace))
     assert 'Verify administrator' in client.get('/admin/billing').text
     assert client.post('/admin/billing/plans',data={'csrf':csrf,'confirmed':'yes'}).status_code==403
     assert client.post('/admin/billing/verify',data={'csrf':csrf,'password':'billing-test-password-123'},follow_redirects=False).status_code==303
@@ -295,6 +300,8 @@ def test_expired_session_and_removed_admin_assignment(workspace,monkeypatch):
         db.execute('UPDATE billing_sessions SET verified=? WHERE owner=?',(time.time()-601,workspace))
     assert client.post('/admin/billing/plans',data={'csrf':csrf,'confirmed':'yes'}).status_code==403
     monkeypatch.delenv('CORTEX_ADMIN_USER_ID')
+    with store.connection() as db:
+        db.execute('DELETE FROM platform_roles WHERE owner=?',(workspace,))
     assert client.get('/admin/billing').status_code==403
     with store.connection() as db:
         db.execute('UPDATE billing_sessions SET expires=0 WHERE owner=?',(workspace,))
@@ -318,7 +325,7 @@ def test_login_requires_csrf_cookie(workspace):
 
 def test_admin_can_disable_unpurchased_prices_and_saves_modern_payment_refs(workspace,monkeypatch):
     monkeypatch.setenv('CORTEX_ADMIN_USER_ID',workspace)
-    billing.configure_plan(workspace,'pro','','',100,500,1000)
+    billing.configure_plan(workspace,'pro','','',100,500,1000,proof=identity.step_up(workspace,'billing-test-password-123'))
     assert billing.plans()['pro']['monthly']==''
     with pytest.raises(ValueError,match='price ID'):
         billing.checkout(workspace,'pro')
@@ -326,3 +333,116 @@ def test_admin_can_disable_unpurchased_prices_and_saves_modern_payment_refs(work
         billing._save_invoice(db,workspace,{'id':'in_modern','payments':{'data':[{'id':'inpay_one','payment':{'type':'payment_intent','payment_intent':'pi_one'}}]}})
     with store.connection() as db:
         assert db.execute('SELECT payment FROM billing_invoices WHERE owner=?',(workspace,)).fetchone()[0]=='pi_one'
+
+
+def test_named_super_admins_share_billing_role_not_credentials(workspace,monkeypatch):
+    import stripe
+    monkeypatch.setenv('CORTEX_ADMIN_USER_ID',workspace);store.initialize()
+    tester=store.signup('named-tester@example.test','individual-tester-password-123')['id']
+    proof=identity.step_up(workspace,'billing-test-password-123')
+    identity.manage_user(workspace,tester,'role','super_admin',proof)
+    client=TestClient(app,base_url='http://localhost:8503')
+    client.cookies.set(COOKIE,issue_session(tester))
+    with store.connection() as db:
+        csrf=db.execute('SELECT csrf FROM billing_sessions WHERE owner=?',(tester,)).fetchone()[0]
+    assert 'Verify administrator' in client.get('/admin/billing').text
+    assert client.post('/admin/verify',data={'csrf':csrf,'password':'individual-tester-password-123'},follow_redirects=False).status_code==303
+    # One recent verification is valid for both directory and billing.
+    assert client.get('/admin/billing').status_code==200
+    assert 'Manage named tester accounts' in client.get('/admin/billing').text
+    identity.manage_user(workspace,tester,'role','member',proof)
+    assert client.get('/admin/billing',follow_redirects=False).status_code==303
+    assert identity.platform_role(workspace)=='super_admin'
+    with store.connection() as db:
+        db.execute("UPDATE users SET status='suspended' WHERE id=?",(tester,))
+        db.execute("INSERT INTO billing_accounts(owner,customer,subscription,status,updated) VALUES(?,?,'sub_inactive','active',?)",(tester,'cus_inactive',time.time()))
+    monkeypatch.setattr(stripe.Subscription,'retrieve',lambda *a,**kw:{'customer':'cus_inactive'})
+    changed=[]
+    monkeypatch.setattr(stripe.Subscription,'modify',lambda *a,**kw:changed.append(kw))
+    billing.admin_cancel(workspace,tester,True,proof)
+    assert changed[0]['cancel_at_period_end'] is True
+
+
+def test_direct_admin_login_preserves_allowlisted_destination(workspace,monkeypatch):
+    monkeypatch.setenv('CORTEX_ADMIN_USER_ID',workspace)
+    client=TestClient(app,base_url='http://localhost:8503')
+    response=client.get('/admin/billing',follow_redirects=False)
+    assert response.status_code==303 and 'next=' in response.headers['location']
+    client.get(response.headers['location'])
+    csrf=client.cookies['cortex_login_csrf']
+    response=client.post('/billing/login',data={'csrf':csrf,'email':'billing@example.test','password':'billing-test-password-123','next':'/admin/billing'},follow_redirects=False)
+    assert response.status_code==303 and response.headers['location']=='/admin/billing'
+    client.get('/billing/login?next=https://evil.example')
+    response=client.post('/billing/login',data={'csrf':client.cookies['cortex_login_csrf'],'email':'billing@example.test','password':'billing-test-password-123','next':'https://evil.example'},follow_redirects=False)
+    assert response.headers['location']=='/workspace/settings/billing'
+
+
+def test_expire_pending_checkout_is_scoped_confirmed_and_cannot_expire_paid(workspace,monkeypatch):
+    import stripe
+    link(workspace)
+    with store.connection() as db:
+        db.execute('INSERT INTO billing_checkouts VALUES(?,?,?,?,?,?)',(workspace,'pro','monthly','cs_pending','https://checkout.stripe.com/test',time.time()+600))
+    state={'id':'cs_pending','customer':'cus_foreign','status':'open'}
+    monkeypatch.setattr(stripe.checkout.Session,'retrieve',lambda *a,**kw:state)
+    calls=[]
+    monkeypatch.setattr(stripe.checkout.Session,'expire',lambda *a,**kw:calls.append(kw))
+    with pytest.raises(ValueError,match='Confirm'):
+        billing.expire_checkout(workspace)
+    with pytest.raises(ValueError,match='mismatch'):
+        billing.expire_checkout(workspace,True)
+    state.update(customer='cus_contract',status='complete')
+    with pytest.raises(ValueError,match='already completed'):
+        billing.expire_checkout(workspace,True)
+    state['status']='open'
+    client,csrf=auth(workspace)
+    assert 'Resume Stripe Checkout' in client.get('/pricing').text
+    response=client.post('/billing/actions/expire-checkout',data={'csrf':csrf,'confirmed':'yes'},follow_redirects=False)
+    assert response.status_code==303 and len(calls)==1 and calls[0]['idempotency_key']
+    assert billing.pending_checkout(workspace) is None
+    assert billing.status_label(billing.account(workspace))=='No subscription yet'
+
+
+def test_test_portal_setup_includes_prices_and_never_mutates_live(workspace,monkeypatch):
+    import stripe
+    from cortex import billing_setup
+    monkeypatch.setattr(stripe.Price,'retrieve',lambda pid,**kw:{'active':True,'livemode':False,'product':'prod_pro','recurring':{'interval':'month' if pid.endswith('month') else 'year','interval_count':1}})
+    captured=[]
+    monkeypatch.setattr(stripe.billing_portal.Configuration,'create',lambda **kw:captured.append(kw) or {'id':'bpc_test'})
+    assert billing_setup.configure_test_portal()=='bpc_test'
+    features=captured[0]['features']
+    assert features['subscription_update']['enabled'] and features['subscription_cancel']['mode']=='at_period_end'
+    assert features['subscription_update']['products'][0]['prices']==['price_promonth','price_proyear']
+    monkeypatch.setenv('STRIPE_SECRET_KEY','sk_live_not_real');monkeypatch.setenv('STRIPE_ALLOW_LIVE','true')
+    with pytest.raises(ValueError,match='Test Mode'):
+        billing_setup.configure_test_portal()
+    assert len(captured)==1
+
+
+def test_webhook_probe_restores_metadata_after_success_and_failure(workspace,monkeypatch):
+    import stripe
+    from cortex import billing_setup
+    monkeypatch.setenv('STRIPE_PORTAL_CONFIGURATION','bpc_owned')
+    monkeypatch.setattr(stripe.billing_portal.Configuration,'retrieve',lambda *a,**kw:{'livemode':False,'metadata':{'application':'cortex','cortex_delivery_probe':'original'}})
+    changes=[]
+    monkeypatch.setattr(stripe.billing_portal.Configuration,'modify',lambda *a,**kw:changes.append(kw['metadata']['cortex_delivery_probe']))
+    monkeypatch.setattr(stripe.Event,'list',lambda **kw:{'data':[{'id':'evt_probe','data':{'object':{'metadata':{'cortex_delivery_probe':changes[-1]}}}}]})
+    with store.connection() as db:
+        db.execute('INSERT INTO billing_events VALUES(?,?)',('evt_probe',time.time()))
+    result=billing_setup.probe_test_webhook()
+    assert result['signature_verified_and_recorded'] and not result['payment_created']
+    assert changes[-1]=='original'
+    with pytest.raises(ValueError,match='did not acknowledge'):
+        billing_setup.probe_test_webhook(timeout=0)
+    assert changes[-1]=='original'
+
+
+def test_probe_rejects_live_or_unowned_configuration(workspace,monkeypatch):
+    import stripe
+    from cortex import billing_setup
+    monkeypatch.setenv('STRIPE_SECRET_KEY','sk_live_fake');monkeypatch.setenv('STRIPE_ALLOW_LIVE','true')
+    with pytest.raises(ValueError,match='Test Mode'):
+        billing_setup.probe_test_webhook()
+    monkeypatch.setenv('STRIPE_SECRET_KEY','sk_test_fake');monkeypatch.setenv('STRIPE_PORTAL_CONFIGURATION','bpc_other')
+    monkeypatch.setattr(stripe.billing_portal.Configuration,'retrieve',lambda *a,**kw:{'livemode':False,'metadata':{'application':'another_app'}})
+    with pytest.raises(ValueError,match='Cortex-owned'):
+        billing_setup.probe_test_webhook()

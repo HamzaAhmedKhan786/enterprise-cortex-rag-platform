@@ -87,10 +87,14 @@ def ingest(owner, name, raw):
     dataset_id = secrets.token_hex(16)
     with store.connection() as db:
         db.execute("BEGIN IMMEDIATE")
+        from cortex.identity import active
+        active(owner, db)
         from cortex.billing import limits
         cap = limits(owner, db)
         existing = db.execute("SELECT id FROM datasets WHERE owner=? AND digest=?", (owner, digest)).fetchone()
         if existing:
+            if db.execute('SELECT 1 FROM organization_datasets WHERE dataset=?',(existing[0],)).fetchone():
+                raise ValueError('This content already belongs to an organization; use that organization workspace.')
             return existing[0]
         usage = db.execute("SELECT COUNT(*),COALESCE(SUM(LENGTH(raw)),0) FROM datasets WHERE owner=?", (owner,)).fetchone()
         if usage[0] >= cap["files"] or usage[1] + len(raw) > cap["storage_mb"] * 1024 * 1024:
