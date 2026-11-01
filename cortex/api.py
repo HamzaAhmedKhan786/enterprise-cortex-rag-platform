@@ -11,6 +11,8 @@ app = FastAPI(title="Cortex service endpoints", docs_url=None, redoc_url=None)
 
 from cortex.billing_routes import router as billing_router
 app.include_router(billing_router)
+from cortex.account_routes import router as account_router
+app.include_router(account_router)
 
 
 @app.get("/health")

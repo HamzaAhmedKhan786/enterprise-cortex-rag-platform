@@ -31,3 +31,11 @@ To reproduce, install Playwright in a development Node environment and run `node
 ## Billing increment screenshots
 
 `20-billing-pricing.png`, `21-billing-overview.png`, `22-billing-payment-methods.png`, `23-billing-invoices.png`, `24-billing-usage.png`, and `25-billing-mobile.png` show the real local service with a temporary synthetic empty account, Free allowances and no configured Stripe credentials. They are not evidence of a successful payment. Regenerate using `scripts/capture_billing.cjs` with the two Python services running and Playwright/Chrome available. The temporary capture identity is deleted afterward.
+
+## Account and administrator increment
+
+Images `26-my-profile.png`, `27-account-settings.png`, `28-admin-user-directory.png`, `29-organization.png`, `30-team-members.png`, `31-mobile-profile.png`, `32-service-profile.png`, `33-service-admin.png`, and `34-admin-user-details.png` show actual browser-tested interfaces backed by an **isolated QA SQLite database**. QA names/accounts are explicit fixtures, not real registered customers or default product accounts. No production account was impersonated and no real email was sent. Reproduction details: ACCOUNTS_ADMIN_GUIDE.md and the isolated capture scripts.
+
+## Configured billing and named tester access
+
+`35-configured-subscription-plans.png`, `36-named-super-admin-billing.png`, and `37-stripe-configuration-check.png` show isolated QA accounts against the verified test price/portal configuration. They demonstrate separate tester credentials and role-controlled financial administration, not a completed payment. The dedicated capture script promotes and then revokes a QA tester entirely in the isolated database.

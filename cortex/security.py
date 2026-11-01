@@ -131,10 +131,10 @@ def scan_upload(owner, name, raw):
 
 def posture(owner):
     return [
-        {"control": "Account isolation", "state": "Active", "detail": "Files, indexes and conversations are scoped by account ID."},
+        {"control": "Account isolation", "state": "Active", "detail": "Private ownership and explicit organization membership protect files, indexes and conversations."},
         {"control": "Cloud raw-content egress", "state": "Blocked by policy", "detail": "Names, addresses, bank details, raw text and prompts remain local."},
         {"control": "Aggregate cloud explanations", "state": "Enabled" if store.preferences(owner)["cloud_aggregates"] else "Disabled by workspace", "detail": "Numeric allowlist and minimum-cohort checks always apply."},
         {"control": "Upload gate", "state": "Fail closed", "detail": "Static inspection and a successful local ClamAV scan are required."},
-        {"control": "Password protection", "state": "Active", "detail": "Salted PBKDF2, login lockout and eight-hour sessions."},
+        {"control": "Password protection", "state": "Active", "detail": "Argon2id with legacy PBKDF2 migration, login lockout and revocable eight-hour sessions."},
         {"control": "SSO / MFA", "state": "Not implemented", "detail": "Required before public enterprise deployment."},
     ]

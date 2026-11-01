@@ -6,7 +6,7 @@ import time
 import pandas as pd
 import streamlit as st
 
-from cortex import billing, logistics, observability, security, store
+from cortex import billing, logistics, observability, security, store, identity
 from cortex.module_agents import LogisticsAgent, MigrationAgent, ObservabilityAgent, SecurityAgent, SubscriptionAgent
 
 
@@ -20,7 +20,7 @@ def subscriptions(owner):
     current = billing.account(owner)
     a, b, c = st.columns(3)
     a.metric("Current plan", current["plan"].title())
-    b.metric("Subscription status", current["status"])
+    b.metric("Subscription status", billing.status_label(current))
     c.metric("Effective allowance", billing.limits(owner)["name"].title())
     st.caption("Verified webhooks activate paid allowances. Checkout returns never grant access. Annual and monthly pricing are configured in Stripe.")
     try:
@@ -29,12 +29,12 @@ def subscriptions(owner):
                             ("/workspace/settings/billing/payment-methods", "Payment methods"),
                             ("/workspace/settings/billing/invoices", "Invoices & payments"),
                             ("/workspace/settings/billing/usage", "AI usage & limits")]:
-            st.link_button(label, base + path)
-        if owner == os.getenv("CORTEX_ADMIN_USER_ID"):
-            st.link_button("Admin billing dashboard", base + "/admin/billing")
+            st.link_button(label, identity.issue_bridge(owner,path))
+        if identity.platform_role(owner)=='super_admin':
+            st.link_button("Admin billing dashboard", identity.issue_bridge(owner,"/admin/billing"))
     except ValueError as exc:
         _error(exc)
-    st.info("Billing runs on the companion service (default port 8503). Sign in there with your workspace account; its session is separate and secure.")
+    st.info("Billing runs on the companion service (default port 8503). Links securely transfer your verified workspace identity with a one-use 60-second ticket.")
     if not os.getenv("STRIPE_SECRET_KEY"):
         st.warning("Stripe is not configured. Add test credentials and recurring Price IDs to .env, enable the Stripe customer portal, and forward signed webhooks to port 8503.")
     usage = billing.usage(owner)

@@ -61,7 +61,7 @@ def _base_url():
 
 def _owner(owner):
     with store.connection() as db:
-        if not db.execute('SELECT 1 FROM users WHERE id=?', (owner,)).fetchone():
+        if not db.execute("SELECT 1 FROM users WHERE id=? AND status='active'", (owner,)).fetchone():
             raise ValueError('Unknown workspace.')
 
 
@@ -372,9 +372,14 @@ def finish_request(owner, request_id, failed=False):
         db.execute('UPDATE billing_usage SET state=? WHERE id=? AND owner=?', ('failed' if failed else 'completed', request_id, owner))
 
 
-def configure_plan(actor, name, monthly, annual, files, storage_mb, ai_requests):
-    from cortex.security import require_admin
-    require_admin(actor)
+def require_admin(actor, proof):
+    from cortex import identity
+    identity.require_platform(actor, super_only=True)
+    identity.require_step(actor, proof)
+
+
+def configure_plan(actor, name, monthly, annual, files, storage_mb, ai_requests, proof=None):
+    require_admin(actor, proof)
     if name not in PLAN_NAMES or name == 'starter':
         raise ValueError('Unknown editable plan.')
     if any(v and not re.fullmatch(r'price_[A-Za-z0-9]+', v) for v in (monthly, annual)):
@@ -407,22 +412,24 @@ def configure_plan(actor, name, monthly, annual, files, storage_mb, ai_requests)
     store.audit(actor, 'billing_plan_configured', name)
 
 
-def admin_accounts(actor):
-    from cortex.security import require_admin
-    require_admin(actor)
+def admin_accounts(actor, proof=None):
+    require_admin(actor, proof)
     with store.connection() as db:
         return [dict(r) for r in db.execute('SELECT u.id,u.email,b.customer,b.subscription,b.plan,b.status,b.period_end,b.verified_at FROM users u LEFT JOIN billing_accounts b ON b.owner=u.id ORDER BY u.created DESC')]
 
 
-def admin_cancel(actor, target, confirmed=False):
-    from cortex.security import require_admin
-    require_admin(actor)
+def admin_cancel(actor, target, confirmed=False, proof=None):
+    require_admin(actor, proof)
     if not confirmed:
         raise ValueError('Explicit cancellation confirmation required.')
     import stripe
-    current = account(target)
+    with store.connection() as db:
+        row=db.execute('SELECT customer,subscription,status FROM billing_accounts WHERE owner=?',(target,)).fetchone()
+    current=dict(row) if row else {}
     if not current.get('subscription'):
         raise ValueError('No subscription exists for that customer.')
+    if current['status'] in {'canceled','incomplete_expired'}:
+        raise ValueError('This subscription has already ended.')
     # Confirm immutable customer ownership from Stripe before modifying.
     sub = stripe.Subscription.retrieve(current['subscription'], api_key=_key())
     if sub.get('customer') != current['customer']:
@@ -430,3 +437,38 @@ def admin_cancel(actor, target, confirmed=False):
     stripe.Subscription.modify(current['subscription'], cancel_at_period_end=True, api_key=_key(),
         idempotency_key=f'admin-cancel-{target}-{current["subscription"]}')
     store.audit(actor, 'billing_admin_cancel_scheduled', target)
+
+
+
+def status_label(current):
+    if not current.get('subscription') and current.get('status')=='unpaid':
+        return 'No subscription yet'
+    return current['status'].replace('_',' ').title()
+
+
+def pending_checkout(owner):
+    _owner(owner)
+    with store.connection() as db:
+        row=db.execute('SELECT plan,interval,url,expires FROM billing_checkouts WHERE owner=? AND expires>?',(owner,time.time())).fetchone()
+    return dict(row) if row else None
+
+
+def expire_checkout(owner,confirmed=False):
+    import stripe
+    current=account(owner)
+    if not confirmed:
+        raise ValueError('Confirm cancellation of the unfinished checkout.')
+    with store.connection() as db:
+        row=db.execute('SELECT session_id FROM billing_checkouts WHERE owner=?',(owner,)).fetchone()
+    if not row or not row['session_id']:
+        raise ValueError('No unfinished checkout exists.')
+    session=stripe.checkout.Session.retrieve(row['session_id'],api_key=_key())
+    if session.get('customer')!=current.get('customer'):
+        raise ValueError('Checkout customer mismatch.')
+    if session['status']=='complete':
+        raise ValueError('Checkout already completed. Wait for its verified webhook; do not pay again.')
+    if session['status']=='open':
+        stripe.checkout.Session.expire(row['session_id'],api_key=_key(),idempotency_key='expire-'+owner+'-'+row['session_id'])
+    with store.connection() as db:
+        db.execute('DELETE FROM billing_checkouts WHERE owner=? AND session_id=?',(owner,row['session_id']))
+    store.audit(owner,'billing_checkout_expired',row['session_id'])

@@ -34,10 +34,16 @@ Users can inspect/export approved analytics records and delete source datasets/i
 
 ## Security and limitations
 
-Passwords use PBKDF2-HMAC-SHA256 and random salts. Login attempts are rate-limited per account; server sessions expire after eight hours. Signup currently does not verify email and there is no password reset, SSO or MFA. TLS, encrypted disks/backups, organization roles, gateway rate limiting, malware scanning, independent security review and breach-response procedures are deployment prerequisites. Do not describe this release as GDPR/SOC 2 certified or fully production hardened.
+New passwords use Argon2id; existing PBKDF2-HMAC-SHA256 passwords upgrade after successful sign-in. Login attempts are rate-limited per account; sessions expire after eight hours and respect status/revocation timestamps. Email verification, password recovery, email changes and verified invitations require configured SMTP. Existing accounts retain access before verification. Organization roles and explicit sharing are enforced in the application. SSO/MFA, TLS, encrypted disks/backups, gateway abuse limits, operational malware scanning, independent review and breach-response procedures remain deployment requirements. Do not describe this release as GDPR/SOC 2 certified or fully production hardened.
 
 ## Billing data and usage records
 
 Stripe hosts card entry, payment details and customer billing-address management. Cortex retains owner-scoped customer/subscription/product/price/payment/invoice references, status and period metadata, safe card summaries (brand, last four, expiry), application quota reservations and billing audit metadata. It never stores card numbers or CVVs. These records are not sent to AI models or attached to Langfuse prompts. Billing sessions are stored as token hashes and expire; password changes revoke older sessions.
 
 Workspace-content erasure does not erase billing records or Stripe customer records. Operators must define applicable financial-record retention and separately handle account/Stripe deletion requests. Invoice/PDF links open Stripe directly. Stripe is a separate payment processor; review the processor terms/privacy settings before offering paid service. Default usage counters measure custom workflow attempts, not actual tokens or provider spend.
+
+## Profiles and organization access
+
+Profiles hold the user's name, company, job title, country and timezone. Verified email links are delivered by the operator's configured mail service; only token hashes persist in Cortex. These account fields and messages are not sent to AI models. Authorized, password-verified platform administrators can inspect safe account metadata, organization membership, activity and subscription status. Platform access does not automatically grant document access.
+
+Explicitly shared organization sources are accessible only to current authorized members, and leave personal retrieval/listings. Conversations are tagged by organization and remain private to their author; membership revocation blocks subsequent server access. Legitimately exported copies cannot be recalled. Teams currently group members without separate document ACLs. Account deletion erases private content and anonymizes the account while retaining organization-owned shared sources and separately retained financial/audit references. Provider deletion and backup erasure require the operator's retention workflow. See ACCOUNTS_ADMIN_GUIDE.md.

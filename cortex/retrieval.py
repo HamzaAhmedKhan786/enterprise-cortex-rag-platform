@@ -36,12 +36,19 @@ def embedding_model():
     return SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2", local_files_only=True)
 
 
-def build_index(owner, dataset_id, strategy):
+def build_index(owner, dataset_id, strategy, organization=None):
     if strategy not in STRATEGIES:
         raise ValueError("Unsupported retrieval strategy.")
-    item = store.dataset(owner, dataset_id)
+    from cortex import organizations
+    if organization:
+        organizations.require(owner, organization, write=True)
+    item = store.dataset(owner, dataset_id, organization)
     with store.connection() as db:
-        db.execute("UPDATE datasets SET status='indexing',error='' WHERE id=? AND owner=?", (dataset_id, owner))
+        db.execute('BEGIN IMMEDIATE')
+        if organization:
+            organizations.require(owner,organization,write=True,db=db)
+        clause,args=store.dataset_scope(owner,organization,db=db)
+        db.execute("UPDATE datasets SET status='indexing',error='' WHERE "+clause+' AND id=?',args+[dataset_id])
     store.audit(owner, "index_started", dataset_id, {"strategy": strategy})
     try:
         if item["kind"] == "document":
@@ -62,17 +69,28 @@ def build_index(owner, dataset_id, strategy):
         if strategy == "hybrid":
             vectors = embedding_model().encode([c[0] for c in chunks], normalize_embeddings=True).tolist()
         with store.connection() as db:
+            db.execute('BEGIN IMMEDIATE')
+            if organization:
+                organizations.require(owner,organization,write=True,db=db)
+            store.dataset(owner,dataset_id,organization)
             # Recheck ownership inside the transaction; replace only after successful generation.
-            if not db.execute("SELECT 1 FROM datasets WHERE id=? AND owner=?", (dataset_id, owner)).fetchone():
+            if not db.execute("SELECT 1 FROM datasets WHERE id=? AND owner=?", (dataset_id, item["owner"])).fetchone():
                 raise ValueError("Dataset was removed during indexing.")
             db.execute("DELETE FROM chunks WHERE dataset=?", (dataset_id,))
             db.executemany("INSERT INTO chunks VALUES(?,?,?,?,?)", [(dataset_id, i, text, parent, json.dumps(vectors[i]) if vectors[i] is not None else None) for i, (text, parent) in enumerate(chunks)])
-            db.execute("UPDATE datasets SET status='ready',strategy=?,error='' WHERE id=? AND owner=?", (strategy, dataset_id, owner))
+            db.execute("UPDATE datasets SET status='ready',strategy=?,error='' WHERE id=? AND owner=?", (strategy, dataset_id, item["owner"]))
         store.audit(owner, "index_completed", dataset_id, {"strategy": strategy, "chunks": len(chunks)})
         return len(chunks)
     except Exception:
-        with store.connection() as db:
-            db.execute("UPDATE datasets SET status='failed',error=? WHERE id=? AND owner=?", ("Index build failed. Check local model availability or choose BM25.", dataset_id, owner))
+        try:
+            with store.connection() as db:
+                db.execute('BEGIN IMMEDIATE')
+                if organization:
+                    organizations.require(owner,organization,write=True,db=db)
+                clause,args=store.dataset_scope(owner,organization,db=db)
+                db.execute("UPDATE datasets SET status='failed',error=? WHERE "+clause+' AND id=?', ['Index build failed. Check local model availability or choose BM25.']+args+[dataset_id])
+        except ValueError:
+            pass
         store.audit(owner, "index_failed", dataset_id, {"strategy": strategy})
         raise
 
@@ -98,12 +116,11 @@ def bm25_scores(query, texts):
     return scores
 
 
-def search(owner, question, dataset_id=None, top_k=4):
+def search(owner, question, dataset_id=None, top_k=4, organization=None):
     if not question.strip() or len(question) > 2000 or not 1 <= top_k <= 20:
         raise ValueError("Use a question of 1–2,000 characters and top_k from 1 to 20.")
-    sql = """SELECT c.*,d.name,d.strategy FROM chunks c JOIN datasets d ON c.dataset=d.id
-             WHERE d.owner=? AND d.status='ready'"""
-    args = [owner]
+    clause,args=store.dataset_scope(owner,organization,'d.')
+    sql="SELECT c.*,d.name,d.strategy FROM chunks c JOIN datasets d ON c.dataset=d.id WHERE "+clause+" AND d.status='ready'"
     if dataset_id:
         sql += " AND d.id=?"
         args.append(dataset_id)
